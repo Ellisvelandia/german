@@ -37,6 +37,11 @@ const ChatMessage = ({
     setShowTranslation((prev) => !prev);
   };
 
+  // Function to clean text from emojis and special symbols
+  const cleanText = (input: string) => {
+    return input.replace(/[^\p{L}\p{N}\s.,!?-]/gu, '').trim();
+  };
+
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}>
       {!isUser && (
@@ -54,12 +59,12 @@ const ChatMessage = ({
         }`}
       >
         {isUser ? (
-          <p className="text-base leading-relaxed break-words">{text}</p>
+          <p className="text-base leading-relaxed break-words">{cleanText(text)}</p>
         ) : (
           <div className="space-y-3">
             <div className="flex items-start space-x-2">
               <p className="text-xl font-medium text-gray-800 leading-relaxed break-words">
-                {text}
+                {cleanText(text)}
               </p>
               {audioUrl && (
                 <button
@@ -79,7 +84,7 @@ const ChatMessage = ({
             <div className="text-base text-gray-600 leading-relaxed italic break-words">
               {showTranslation ? (
                 <>
-                  {translation}{" "}
+                  {cleanText(translation)}{" "}
                   <button
                     onClick={toggleTranslation}
                     className="text-blue-600 underline ml-2"
