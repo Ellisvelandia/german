@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { apiService } from '../services/api';
 import ChatMessage from './ChatMessage';
+import { Mic, Send, MicOff } from 'lucide-react';
 
 interface Message {
   text: string;
@@ -13,10 +14,11 @@ interface ChatInterfaceProps {
   scenario: string;
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ scenario }) => {
+const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -33,6 +35,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ scenario }) => {
     const userMessage: Message = { text: inputText, isUser: true };
     setMessages(prev => [...prev, userMessage]);
     setInputText('');
+    setIsLoading(true);
 
     try {
       const response = await apiService.sendMessage(scenario, inputText);
@@ -45,6 +48,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ scenario }) => {
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       console.error('Error sending message:', error);
+      setMessages(prev => [...prev, { text: 'Sorry, there was an error processing your message. Please try again.', isUser: false }]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -61,6 +67,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ scenario }) => {
 
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        setIsLoading(true);
         try {
           const response = await apiService.sendAudio(scenario, audioBlob);
           const botMessage: Message = {
@@ -72,6 +79,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ scenario }) => {
           setMessages(prev => [...prev, botMessage]);
         } catch (error) {
           console.error('Error sending audio:', error);
+          setMessages(prev => [...prev, { text: 'Sorry, there was an error processing your audio. Please try again.', isUser: false }]);
+        } finally {
+          setIsLoading(false);
         }
       };
 
@@ -102,22 +112,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ scenario }) => {
             isUser={message.isUser}
           />
         ))}
+        {isLoading && (
+          <div className="flex justify-center items-center py-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-2 p-4 border-t">
         <button
-          className={`p-2 ${isRecording ? 'bg-red-500' : 'bg-blue-500'} text-white rounded-full hover:opacity-80`}
           onClick={isRecording ? stopRecording : startRecording}
+          className={`p-2 rounded-full ${isRecording ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'} text-white`}
+          disabled={isLoading}
         >
-          <span className="sr-only">{isRecording ? 'Stop Recording' : 'Start Recording'}</span>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
-            <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
-          </svg>
+          {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
         </button>
         <input
           type="text"
@@ -125,21 +133,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ scenario }) => {
           onChange={(e) => setInputText(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
           placeholder="Type your message..."
-          className="flex-1 p-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          disabled={isLoading || isRecording}
         />
         <button
-          className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600"
           onClick={handleSendMessage}
+          className="p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white"
+          disabled={isLoading || !inputText.trim() || isRecording}
         >
-          <span className="sr-only">Send</span>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
-            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
-          </svg>
+          <Send size={20} />
         </button>
       </div>
     </div>

@@ -5,7 +5,7 @@ interface NavigationProps {
   setSelectedScenario: (scenario: string) => void;
 }
 
-const Navigation: React.FC<NavigationProps> = ({ selectedScenario, setSelectedScenario }) => {
+const Navigation = ({ selectedScenario, setSelectedScenario }: NavigationProps) => {
   return (
     <nav className="bg-white shadow-lg">
       <div className="max-w-7xl mx-auto px-4">
