@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface ChatMessageProps {
   text: string;
@@ -7,33 +7,41 @@ interface ChatMessageProps {
   isUser: boolean;
 }
 
-const ChatMessage: React.FC<ChatMessageProps> = ({ text, translation, audioUrl, isUser }) => {
+const ChatMessage: React.FC<ChatMessageProps> = ({
+  text,
+  translation,
+  audioUrl,
+  isUser,
+}) => {
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
-      <div className={`max-w-[70%] rounded-lg p-3 ${isUser ? 'bg-blue-500 text-white' : 'bg-white'}`}>
-        <div className="flex items-center space-x-2 mb-1">
-          {!isUser && audioUrl && (
-            <button
-              className="p-1 hover:bg-gray-100 rounded-full"
-              onClick={() => {
-                const audio = new Audio(audioUrl);
-                audio.play();
-              }}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-              </svg>
-            </button>
-          )}
-          <p className="text-sm">{text}</p>
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}>
+      {!isUser && (
+        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+          <img
+            src="/woman.png"
+            alt="ai woman"
+            className="w-full h-full rounded-full"
+          />
         </div>
-        {!isUser && (
-          <p className="text-xs text-gray-500 mt-1">{translation}</p>
+      )}
+      <div
+        className={`max-w-[70%] rounded-lg p-5 ${
+          isUser ? "bg-blue-500 text-white" : "bg-white shadow-lg"
+        }`}
+      >
+        {isUser ? (
+          <p className="text-base leading-relaxed break-words">{text}</p>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-xl font-medium text-gray-800 leading-relaxed break-words">
+              {text}
+            </p>
+            <div className="h-px bg-gray-200 my-2" />
+            <p className="text-base text-gray-600 leading-relaxed italic break-words">
+              {translation}
+            </p>
+            {audioUrl && <audio src={audioUrl} autoPlay className="hidden" />}
+          </div>
         )}
       </div>
     </div>
