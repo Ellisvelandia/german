@@ -20,10 +20,30 @@ export class ApiService {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to send message');
+      throw new Error(`Failed to send message: ${response.statusText}`);
     }
 
-    return response.json();
+    const data = await response.json();
+    
+    // Map backend response fields to frontend expected fields
+    const mappedData = {
+      text: data.germanText,
+      translation: data.englishText,
+      audio: data.audio
+    };
+    
+    // Validate response data
+    if (!mappedData.text || typeof mappedData.text !== 'string') {
+      throw new Error('Invalid response: missing or invalid text');
+    }
+    if (!mappedData.translation || typeof mappedData.translation !== 'string') {
+      throw new Error('Invalid response: missing or invalid translation');
+    }
+    if (!mappedData.audio || typeof mappedData.audio !== 'string') {
+      throw new Error('Invalid response: missing or invalid audio');
+    }
+
+    return mappedData;
   }
 
   async sendAudio(scenario: string, audioBlob: Blob): Promise<ConversationResponse> {
@@ -37,10 +57,23 @@ export class ApiService {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to send audio');
+      throw new Error(`Failed to send audio: ${response.statusText}`);
     }
 
-    return response.json();
+    const data = await response.json();
+
+    // Validate response data
+    if (!data.text || typeof data.text !== 'string') {
+      throw new Error('Invalid response: missing or invalid text');
+    }
+    if (!data.translation || typeof data.translation !== 'string') {
+      throw new Error('Invalid response: missing or invalid translation');
+    }
+    if (!data.audio || typeof data.audio !== 'string') {
+      throw new Error('Invalid response: missing or invalid audio');
+    }
+
+    return data;
   }
 }
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState, useRef } from "react";
 import { Play, Pause } from "lucide-react";
 
 interface ChatMessageProps {
@@ -15,7 +15,8 @@ const ChatMessage = ({
   isUser,
 }: ChatMessageProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
-  const audioRef = React.useRef<HTMLAudioElement>(null);
+  const [showTranslation, setShowTranslation] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   const handlePlayAudio = () => {
     if (audioRef.current) {
@@ -32,12 +33,16 @@ const ChatMessage = ({
     setIsPlaying(false);
   };
 
+  const toggleTranslation = () => {
+    setShowTranslation((prev) => !prev);
+  };
+
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}>
       {!isUser && (
         <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mr-3">
           <img
-            src="/woman.png"
+            src="/asianwoman.png"
             alt="ai woman"
             className="w-full h-full rounded-full"
           />
@@ -52,18 +57,15 @@ const ChatMessage = ({
           <p className="text-base leading-relaxed break-words">{text}</p>
         ) : (
           <div className="space-y-3">
-            <p className="text-xl font-medium text-gray-800 leading-relaxed break-words">
-              {text}
-            </p>
-            <div className="h-px bg-gray-200 my-2" />
-            <p className="text-base text-gray-600 leading-relaxed italic break-words">
-              {translation}
-            </p>
-            {audioUrl && (
-              <div className="mt-2 flex items-center">
+            <div className="flex items-start space-x-2">
+              <p className="text-xl font-medium text-gray-800 leading-relaxed break-words">
+                {text}
+              </p>
+              {audioUrl && (
                 <button
                   onClick={handlePlayAudio}
-                  className="flex items-center justify-center p-2 rounded-full bg-blue-100 hover:bg-blue-200 transition-colors"
+                  className="flex-shrink-0 flex items-center justify-center p-2 rounded-full bg-blue-100 hover:bg-blue-200 transition-colors"
+                  title="Play pronunciation"
                 >
                   {isPlaying ? (
                     <Pause className="h-5 w-5 text-blue-600" />
@@ -71,13 +73,36 @@ const ChatMessage = ({
                     <Play className="h-5 w-5 text-blue-600" />
                   )}
                 </button>
-                <audio
-                  ref={audioRef}
-                  src={audioUrl}
-                  onEnded={handleAudioEnded}
-                  className="hidden"
-                />
-              </div>
+              )}
+            </div>
+            <div className="h-px bg-gray-200" />
+            <div className="text-base text-gray-600 leading-relaxed italic break-words">
+              {showTranslation ? (
+                <>
+                  {translation}{" "}
+                  <button
+                    onClick={toggleTranslation}
+                    className="text-blue-600 underline ml-2"
+                  >
+                    Hide Translation
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={toggleTranslation}
+                  className="text-blue-600 underline"
+                >
+                  Show Translation
+                </button>
+              )}
+            </div>
+            {audioUrl && (
+              <audio
+                ref={audioRef}
+                src={audioUrl}
+                onEnded={handleAudioEnded}
+                className="hidden"
+              />
             )}
           </div>
         )}

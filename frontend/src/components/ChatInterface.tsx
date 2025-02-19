@@ -39,16 +39,27 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
 
     try {
       const response = await apiService.sendMessage(scenario, inputText);
+      console.log('API Response:', response); // Debug log
+
+      if (!response.text) {
+        throw new Error('No text received from API');
+      }
+
       const botMessage: Message = {
         text: response.text,
-        translation: response.translation,
-        audioUrl: `data:audio/mp3;base64,${response.audio}`,
+        translation: response.translation || 'Translation not available',
+        audioUrl: response.audio ? `data:audio/mp3;base64,${response.audio}` : undefined,
         isUser: false
       };
+      console.log('Bot Message:', botMessage); // Debug log
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       console.error('Error sending message:', error);
-      setMessages(prev => [...prev, { text: 'Sorry, there was an error processing your message. Please try again.', isUser: false }]);
+      setMessages(prev => [...prev, { 
+        text: 'Sorry, there was an error processing your message. Please try again.', 
+        translation: '',
+        isUser: false 
+      }]);
     } finally {
       setIsLoading(false);
     }
@@ -71,8 +82,8 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
         try {
           const response = await apiService.sendAudio(scenario, audioBlob);
           const botMessage: Message = {
-            text: response.text,
-            translation: response.translation,
+            text: response.text || 'No response text available',
+            translation: response.translation || 'No translation available',
             audioUrl: `data:audio/mp3;base64,${response.audio}`,
             isUser: false
           };
