@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Play, Pause } from "lucide-react";
 
 interface ChatMessageProps {
@@ -17,6 +17,13 @@ const ChatMessage = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    if (audioRef.current && audioUrl && !isUser) {
+      audioRef.current.play();
+      setIsPlaying(true);
+    }
+  }, [audioUrl, isUser]);
 
   const handlePlayAudio = () => {
     if (audioRef.current) {
@@ -39,7 +46,7 @@ const ChatMessage = ({
 
   // Function to clean text from emojis and special symbols
   const cleanText = (input: string) => {
-    return input.replace(/[^\p{L}\p{N}\s.,!?-]/gu, '').trim();
+    return input.replace(/[^\p{L}\p{N}\s.,!?-]/gu, "").trim();
   };
 
   return (
@@ -59,7 +66,9 @@ const ChatMessage = ({
         }`}
       >
         {isUser ? (
-          <p className="text-base leading-relaxed break-words">{cleanText(text)}</p>
+          <p className="text-base leading-relaxed break-words">
+            {cleanText(text)}
+          </p>
         ) : (
           <div className="space-y-3">
             <div className="flex items-start space-x-2">
