@@ -8,15 +8,12 @@ import cors from 'cors'
 dotenv.config()
 
 const run = async () => {
-
   const app = express()
-
   app.use(cors({
-    origin: 'http://localhost:3000', // Allow only this origin
-    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods
-    credentials: true, // Allow cookies and credentials
+    origin: 'http://localhost:5173',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true,
   }))
-
   const clients: Clients = await createResources()
 
   app.use(express.json())

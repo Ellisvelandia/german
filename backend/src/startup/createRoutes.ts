@@ -78,5 +78,29 @@ export const createRoutes = (clients: any) => {
     }
   })
 
+  // Endpoint for API conversation
+  router.post('/api/conversation', async (req: Request, res: Response) => {
+    try {
+      const scenario = req.body.scenario
+      const message = req.body.message || 'hello'
+
+      const { audioFilePath: responseAudioPath, text, translation } = await conversationService.converse(scenario, [
+        { role: 'user', content: message },
+      ])
+
+      const audioFile = readFileSync(responseAudioPath)
+
+      res.setHeader('Content-Type', 'application/json')
+      res.send({
+        audio: audioFile.toString('base64'),
+        germanText: text,
+        englishText: translation
+      })
+    } catch (error) {
+      console.error('Error in /api/conversation:', error)
+      res.status(500).send({ error: 'Failed to generate response' })
+    }
+  })
+
   return router
 }
