@@ -6,6 +6,9 @@
 
 # Environment variables
 .env
+# Local environment variables
+.env.local
+# Build output
 
 # Logs
 *.log
