@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaShoppingCart, FaUtensils, FaTrain } from 'react-icons/fa';
+import { FaShoppingCart, FaUtensils, FaTrain, FaComments } from 'react-icons/fa';
 import { startConversationWithText } from '../../services/apiService';
 import RolePlayPage from '../RolePlayPage/RolePlayPage';
 import Button from '../common/Button';
@@ -18,6 +18,7 @@ const ScenarioSelector = () => {
     { name: 'supermarket', icon: <FaShoppingCart /> },
     { name: 'restaurant', icon: <FaUtensils /> },
     { name: 'train station', icon: <FaTrain /> },
+    { name: 'free conversation', icon: <FaComments /> },
   ];
 
   const handleScenarioSelect = (scenario) => {

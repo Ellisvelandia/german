@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "tsx src/app.ts",
-    "dev": "tsx app.ts",
+    "dev": "tsx src/app.ts",
     "build": "tsc",
     "start:prod": "node dist/app.js",
     "lint": "eslint . --ext .ts",

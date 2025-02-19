@@ -19,7 +19,7 @@ const upload = multer({ storage })
 
 export const createRoutes = (clients: any) => {
   const router = Router()
-  const apiKey = process.env.AUDIO_API_KEY || ''
+  const apiKey = process.env.ASSEMBLYAI_API_KEY || ''
   const audioToTextService = new AudioToTextService(apiKey)
   const conversationService = new ConversationService(clients)
 

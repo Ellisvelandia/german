@@ -1,6 +1,7 @@
 import { SupermarketScenario } from './Supermarket'
 import { RestaurantScenario } from './Restaurant'
 import { TrainStationScenario } from './TrainStation'
+import { FreeConversationScenario } from './FreeConversation'
 import { Scenario } from './Scenario'
 
 export class ScenarioFactory {
@@ -12,6 +13,8 @@ export class ScenarioFactory {
         return new RestaurantScenario()
       case 'train station':
         return new TrainStationScenario()
+      case 'free conversation':
+        return new FreeConversationScenario()
       default:
         throw new Error(`Scenario "${scenario}" not found.`)
     }
