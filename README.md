@@ -131,4 +131,4 @@ If you encounter any issues or have questions, please:
 - [ ] Implement progress tracking
 - [ ] Add gamification elements
 - [ ] Support for different German dialects
-- [ ] Mobile app development
+- [ ] Mobile app development# german
