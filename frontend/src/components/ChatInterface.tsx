@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { apiService } from '../services/api';
+import { useAudio } from '../hooks/useAudio';
 import ChatMessage from './ChatMessage';
 import { Mic, Send, MicOff } from 'lucide-react';
 
@@ -14,6 +15,11 @@ interface ChatInterfaceProps {
   scenario: string;
 }
 
+const INITIAL_MESSAGES: { [key: string]: string } = {
+  restaurant: "Willkommen im Restaurant! Wie kann ich Ihnen helfen?",
+  supermarket: "Willkommen im Supermarkt! Wonach suchen Sie?"
+};
+
 const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -22,6 +28,18 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { audioRef, play, stop } = useAudio({});
+
+  useEffect(() => {
+    // Initialize chat with scenario-specific greeting
+    const initialMessage = INITIAL_MESSAGES[scenario] || "Willkommen! Wie kann ich Ihnen helfen?";
+    setMessages([{
+      text: initialMessage,
+      translation: "Welcome! How can I help you?",
+      isUser: false,
+      audioUrl: undefined
+    }]);
+  }, [scenario]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -32,6 +50,9 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
 
+    // Stop any playing audio before sending new message
+    stop();
+
     const userMessage: Message = { text: inputText, isUser: true };
     setMessages(prev => [...prev, userMessage]);
     setInputText('');
@@ -39,25 +60,31 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
 
     try {
       const response = await apiService.sendMessage(scenario, inputText);
-      console.log('API Response:', response); // Debug log
 
-      if (!response.text) {
-        throw new Error('No text received from API');
+      // Ensure we have all required fields from the response
+      if (!response.text || !response.translation || !response.audio) {
+        throw new Error('Invalid response: missing required fields');
       }
 
+      const audioUrl = `data:audio/mp3;base64,${response.audio}`;
       const botMessage: Message = {
         text: response.text,
-        translation: response.translation || 'Translation not available',
-        audioUrl: response.audio ? `data:audio/mp3;base64,${response.audio}` : undefined,
+        translation: response.translation,
+        audioUrl: audioUrl,
         isUser: false
       };
-      console.log('Bot Message:', botMessage); // Debug log
       setMessages(prev => [...prev, botMessage]);
+      
+      // Auto-play the response audio
+      if (audioRef.current) {
+        audioRef.current.src = audioUrl;
+        play();
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       setMessages(prev => [...prev, { 
-        text: 'Sorry, there was an error processing your message. Please try again.', 
-        translation: '',
+        text: 'Entschuldigung, es gab einen Fehler. Bitte versuchen Sie es erneut.',
+        translation: 'Sorry, there was an error. Please try again.',
         isUser: false 
       }]);
     } finally {
@@ -81,16 +108,26 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
         setIsLoading(true);
         try {
           const response = await apiService.sendAudio(scenario, audioBlob);
+
+          // Ensure we have all required fields from the response
+          if (!response.text || !response.translation || !response.audio) {
+            throw new Error('Invalid response: missing required fields');
+          }
+
           const botMessage: Message = {
-            text: response.text || 'No response text available',
-            translation: response.translation || 'No translation available',
+            text: response.text,
+            translation: response.translation,
             audioUrl: `data:audio/mp3;base64,${response.audio}`,
             isUser: false
           };
           setMessages(prev => [...prev, botMessage]);
         } catch (error) {
           console.error('Error sending audio:', error);
-          setMessages(prev => [...prev, { text: 'Sorry, there was an error processing your audio. Please try again.', isUser: false }]);
+          setMessages(prev => [...prev, { 
+            text: 'Entschuldigung, es gab einen Fehler. Bitte versuchen Sie es erneut.',
+            translation: 'Sorry, there was an error. Please try again.',
+            isUser: false 
+          }]);
         } finally {
           setIsLoading(false);
         }
@@ -143,7 +180,7 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-          placeholder="Type your message..."
+          placeholder="Type your message in German..."
           className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           disabled={isLoading || isRecording}
         />

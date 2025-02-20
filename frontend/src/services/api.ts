@@ -27,8 +27,8 @@ export class ApiService {
     
     // Map backend response fields to frontend expected fields
     const mappedData = {
-      text: data.germanText,
-      translation: data.englishText,
+      text: data.germanText || data.text,
+      translation: data.englishText || data.translation,
       audio: data.audio
     };
     
@@ -51,7 +51,7 @@ export class ApiService {
     formData.append('audio', audioBlob);
     formData.append('scenarioName', scenario);
 
-    const response = await fetch(`${this.baseUrl}/converse/audio`, {
+    const response = await fetch(`${this.baseUrl}/api/conversation/audio`, {
       method: 'POST',
       body: formData,
     });
@@ -62,18 +62,25 @@ export class ApiService {
 
     const data = await response.json();
 
+    // Map backend response fields to frontend expected fields
+    const mappedData = {
+      text: data.germanText || data.text,
+      translation: data.englishText || data.translation,
+      audio: data.audio
+    };
+
     // Validate response data
-    if (!data.text || typeof data.text !== 'string') {
+    if (!mappedData.text || typeof mappedData.text !== 'string') {
       throw new Error('Invalid response: missing or invalid text');
     }
-    if (!data.translation || typeof data.translation !== 'string') {
+    if (!mappedData.translation || typeof mappedData.translation !== 'string') {
       throw new Error('Invalid response: missing or invalid translation');
     }
-    if (!data.audio || typeof data.audio !== 'string') {
+    if (!mappedData.audio || typeof mappedData.audio !== 'string') {
       throw new Error('Invalid response: missing or invalid audio');
     }
 
-    return data;
+    return mappedData;
   }
 }
 
