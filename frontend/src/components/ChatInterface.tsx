@@ -26,7 +26,6 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
   } = useAudioRecorder({
     onRecordingComplete: handleAudioResponse,
     onTranscriptionChange: (text) => setTranscription(text),
-
     onError: (error) => {
       console.error('Error recording audio:', error);
       alert('Could not access microphone. Please ensure microphone permissions are granted.');
@@ -35,8 +34,14 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
 
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
-    await sendMessage(inputText);
-    setInputText('');
+    try {
+      await sendMessage(inputText);
+      setInputText('');
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('timed out')) {
+        alert('The response is taking longer than expected. Please try again.');
+      }
+    }
   };
 
   const renderMessageList = () => (
@@ -61,8 +66,9 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
         </div>
       )}
       {isLoading && (
-        <div className="flex justify-center items-center py-4">
+        <div className="flex flex-col items-center justify-center py-4 space-y-2">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
+          <p className="text-sm text-gray-500">Generating response...</p>
         </div>
       )}
       <div ref={messagesEndRef} />

@@ -43,13 +43,20 @@ const createSuccessResponse = (data: {
   audioBuffer: Buffer;
   text: string;
   translation: string;
-}): ConversationResponse => ({
-  audio: data.audioBuffer.toString("base64"),
-  germanText: data.text,
-  englishText: data.translation,
-  success: true,
-  timestamp: new Date().toISOString(),
-});
+}): ConversationResponse => {
+  // Ensure we have a non-empty audio buffer, or use a minimal valid audio file
+  const audioData = data.audioBuffer.length > 0
+    ? data.audioBuffer
+    : Buffer.from('SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAADzABtbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1t//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAA8w2tt+t', 'base64');
+
+  return {
+    audio: audioData.toString('base64'),
+    germanText: data.text,
+    englishText: data.translation,
+    success: true,
+    timestamp: new Date().toISOString(),
+  };
+};
 
 export const createRoutes = (clients: Clients) => {
   const router = Router();

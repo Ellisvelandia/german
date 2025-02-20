@@ -6,9 +6,30 @@ interface ConversationResponse {
 
 export class ApiService {
   private baseUrl = 'http://localhost:8002'
+  private timeout = 15000; // 15 seconds timeout
+
+  private async fetchWithTimeout(url: string, options: RequestInit): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request timed out. Please try again.');
+      }
+      throw error;
+    }
+  }
 
   async sendMessage(scenario: string, message: string): Promise<ConversationResponse> {
-    const response = await fetch(`${this.baseUrl}/api/conversation`, {
+    const response = await this.fetchWithTimeout(`${this.baseUrl}/api/conversation`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -27,9 +48,9 @@ export class ApiService {
     
     // Map backend response fields to frontend expected fields
     const mappedData = {
-      text: data.germanText || data.text,
-      translation: data.englishText || data.translation,
-      audio: data.audio
+      text: data.germanText || data.text || '',
+      translation: data.englishText || data.translation || '',
+      audio: data.audio || ''
     };
     
     // Validate response data
@@ -39,8 +60,9 @@ export class ApiService {
     if (!mappedData.translation || typeof mappedData.translation !== 'string') {
       throw new Error('Invalid response: missing or invalid translation');
     }
-    if (!mappedData.audio || typeof mappedData.audio !== 'string') {
-      throw new Error('Invalid response: missing or invalid audio');
+    // Allow empty audio string as it will be handled by the audio player component
+    if (typeof mappedData.audio !== 'string') {
+      throw new Error('Invalid response: audio must be a string');
     }
 
     return mappedData;
