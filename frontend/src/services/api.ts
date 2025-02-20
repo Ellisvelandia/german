@@ -6,7 +6,7 @@ interface ConversationResponse {
 
 export class ApiService {
   private baseUrl = 'http://localhost:8002'
-  private timeout = 15000; // 15 seconds timeout
+  private timeout = 30000; // 30 seconds timeout
 
   private async fetchWithTimeout(url: string, options: RequestInit): Promise<Response> {
     const controller = new AbortController();
@@ -21,10 +21,13 @@ export class ApiService {
       return response;
     } catch (error) {
       clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Request timed out. Please try again.');
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          throw new Error('Request timed out. The server is taking longer than expected to respond. Please try again.');
+        }
+        throw new Error(`Network error: ${error.message}`);
       }
-      throw error;
+      throw new Error('An unexpected error occurred');
     }
   }
 

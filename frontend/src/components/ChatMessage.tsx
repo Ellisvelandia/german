@@ -20,22 +20,43 @@ const ChatMessage = ({
 
   useEffect(() => {
     let isCurrentAudio = true;
+    let hasError = false;
 
     const playAudio = async () => {
-      if (audioRef.current && audioUrl && !isUser) {
-        try {
-          audioRef.current.src = audioUrl;
-          await audioRef.current.load();
-          
-          if (isCurrentAudio) {
-            await audioRef.current.play();
-            setIsPlaying(true);
-          }
-        } catch (error) {
-          console.error('Error auto-playing audio:', error);
-          if (isCurrentAudio) {
-            setIsPlaying(false);
-          }
+      if (!audioRef.current || !audioUrl || isUser || hasError) return;
+
+      try {
+        // Reset audio state
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current.removeAttribute('src');
+        audioRef.current.load();
+
+        // Validate audio URL format
+        if (!audioUrl.startsWith("data:audio") && !audioUrl.startsWith("http")) {
+          throw new Error("Invalid audio URL format");
+        }
+
+        // Set new source and load
+        audioRef.current.src = audioUrl;
+        await new Promise((resolve, reject) => {
+          if (!audioRef.current) return reject();
+          audioRef.current.onloadedmetadata = resolve;
+          audioRef.current.onerror = () => {
+            hasError = true;
+            reject(new Error("Failed to load audio"));
+          };
+        });
+
+        if (isCurrentAudio && !hasError) {
+          await audioRef.current.play();
+          setIsPlaying(true);
+        }
+      } catch (error) {
+        console.error("Error auto-playing audio:", error);
+        if (isCurrentAudio) {
+          setIsPlaying(false);
+          hasError = true;
         }
       }
     };
@@ -45,34 +66,57 @@ const ChatMessage = ({
     return () => {
       isCurrentAudio = false;
       if (audioRef.current) {
+        audioRef.current.onloadedmetadata = null;
+        audioRef.current.onerror = null;
         audioRef.current.pause();
-        audioRef.current.src = '';
+        audioRef.current.removeAttribute('src');
+        audioRef.current.load();
       }
     };
   }, [audioUrl, isUser]);
 
   const handlePlayAudio = async () => {
-    if (audioRef.current) {
-      try {
-        if (isPlaying) {
-          await audioRef.current.pause();
-        } else {
-          await audioRef.current.play();
+    if (!audioRef.current || !audioUrl) return;
+
+    try {
+      if (isPlaying) {
+        await audioRef.current.pause();
+      } else {
+        // Ensure audio source is set and loaded
+        if (audioRef.current.src !== audioUrl) {
+          audioRef.current.src = audioUrl;
+          await new Promise((resolve, reject) => {
+            audioRef.current!.onloadedmetadata = resolve;
+            audioRef.current!.onerror = () =>
+              reject(new Error("Failed to load audio"));
+          });
         }
-        setIsPlaying(!isPlaying);
-      } catch (error) {
-        console.error('Error playing/pausing audio:', error);
+        await audioRef.current.play();
       }
+      setIsPlaying(!isPlaying);
+    } catch (error) {
+      console.error("Error playing/pausing audio:", error);
+      setIsPlaying(false);
     }
   };
 
-  const handleAudioEnded = () => {
-    setIsPlaying(false);
-  };
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
 
   const handleAudioError = (error: Event) => {
-    console.error('Audio playback error:', error);
+    // Reset playback state immediately
     setIsPlaying(false);
+    
+    // Clean up audio element
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.removeAttribute('src');
+      audioRef.current.load();
+    }
+
+    // Log error without detailed information to prevent circular references
+    console.error("Audio playback failed");
   };
   const toggleTranslation = () => {
     setShowTranslation((prev) => !prev);
@@ -84,7 +128,11 @@ const ChatMessage = ({
   };
 
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4 px-2 sm:px-0 w-full`}>
+    <div
+      className={`flex ${
+        isUser ? "justify-end" : "justify-start"
+      } mb-4 px-2 sm:px-0 w-full`}
+    >
       {!isUser && (
         <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-blue-100 flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
           <img
@@ -95,7 +143,9 @@ const ChatMessage = ({
         </div>
       )}
       <div
-        className={`max-w-[85%] sm:max-w-[70%] rounded-lg p-3 sm:p-5 ${isUser ? "bg-blue-500 text-white" : "bg-white shadow-lg"}`}
+        className={`max-w-[85%] sm:max-w-[70%] rounded-lg p-3 sm:p-5 ${
+          isUser ? "bg-blue-500 text-white" : "bg-white shadow-lg"
+        }`}
       >
         {isUser ? (
           <p className="text-sm sm:text-base leading-relaxed break-words">
@@ -146,8 +196,10 @@ const ChatMessage = ({
               <audio
                 ref={audioRef}
                 src={audioUrl}
-                onEnded={handleAudioEnded}
-                onError={(e: React.SyntheticEvent<HTMLAudioElement, Event>) => handleAudioError(e.nativeEvent)}
+                onEnded={() => setIsPlaying(false)}
+                onError={(e: React.SyntheticEvent<HTMLAudioElement, Event>) =>
+                  handleAudioError(e.nativeEvent)
+                }
                 preload="auto"
                 className="hidden"
               />
