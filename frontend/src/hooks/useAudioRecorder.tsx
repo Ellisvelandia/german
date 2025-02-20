@@ -2,13 +2,15 @@ import { useState, useRef } from 'react';
 
 interface UseAudioRecorderProps {
   onRecordingComplete: (audioBlob: Blob) => void;
+  onTranscriptionChange?: (text: string) => void;
   onError?: (error: Error) => void;
 }
 
-export const useAudioRecorder = ({ onRecordingComplete, onError }: UseAudioRecorderProps) => {
+export const useAudioRecorder = ({ onRecordingComplete, onTranscriptionChange, onError }: UseAudioRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const speechRecognitionRef = useRef<typeof window.webkitSpeechRecognition | null>(null);
 
   const startRecording = async () => {
     try {
@@ -18,6 +20,27 @@ export const useAudioRecorder = ({ onRecordingComplete, onError }: UseAudioRecor
       });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
+
+      // Initialize speech recognition
+      if ('webkitSpeechRecognition' in window) {
+        const SpeechRecognition = window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'de-DE'; // Set to German
+
+        recognition.onresult = (event: any) => {
+          const transcript = Array.from(event.results)
+            .map((result: unknown) => (result as SpeechRecognitionResult)[0])
+            .map(result => result.transcript)
+            .join('');
+          
+          onTranscriptionChange?.(transcript);
+        };
+
+        recognition.start();
+        speechRecognitionRef.current = recognition;
+      }
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -55,8 +78,11 @@ export const useAudioRecorder = ({ onRecordingComplete, onError }: UseAudioRecor
     if (mediaRecorderRef.current?.state === 'recording') {
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-      setIsRecording(false);
     }
+    if (speechRecognitionRef.current) {
+      speechRecognitionRef.current.stop();
+    }
+    setIsRecording(false);
   };
 
   return {
@@ -65,3 +91,10 @@ export const useAudioRecorder = ({ onRecordingComplete, onError }: UseAudioRecor
     stopRecording
   };
 };
+
+// Add TypeScript declarations for the Web Speech API
+declare global {
+  interface Window {
+    webkitSpeechRecognition: any;
+  }
+}
