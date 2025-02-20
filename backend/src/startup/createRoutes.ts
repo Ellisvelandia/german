@@ -1,112 +1,209 @@
-import { Router, Request, Response } from 'express'
-import multer from 'multer'
-import { AudioToTextService } from '../services/AudioToTextService'
-import { ConversationService } from '../services/ConversationService'
-import { readFileSync } from 'fs'
-import path from 'path'
+import { Router, Request, Response } from "express";
+import multer from "multer";
+import { AudioToTextService } from "../services/AudioToTextService";
+import { ConversationService } from "../services/ConversationService";
+import { Clients } from "../types";
 
-// FOR DEBUGGING
-const storage = multer.diskStorage({
-  destination: 'uploads/',
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.mp3' // Get original extension or default to .mp3
-    const filename = `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}` // Generate unique filename
-    cb(null, filename)
+// Define interfaces for request and response types
+interface ConversationResponse {
+  audio: string;
+  germanText: string;
+  englishText: string;
+  success: boolean;
+  timestamp: string;
+}
+
+interface ErrorResponse {
+  error: string;
+  success: boolean;
+  timestamp: string;
+}
+
+// Use memory storage for better performance
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // Limit file size to 10MB
   },
-})
+});
 
-const upload = multer({ storage })
+// Helper function to create standardized error response
+const createErrorResponse = (
+  message: string,
+  statusCode: number = 500
+): ErrorResponse => ({
+  error: message,
+  success: false,
+  timestamp: new Date().toISOString(),
+});
 
-export const createRoutes = (clients: any) => {
-  const router = Router()
-  const apiKey = process.env.ASSEMBLYAI_API_KEY || ''
-  const audioToTextService = new AudioToTextService(apiKey)
-  const conversationService = new ConversationService(clients)
+// Helper function to create standardized success response
+const createSuccessResponse = (data: {
+  audioBuffer: Buffer;
+  text: string;
+  translation: string;
+}): ConversationResponse => ({
+  audio: data.audioBuffer.toString("base64"),
+  germanText: data.text,
+  englishText: data.translation,
+  success: true,
+  timestamp: new Date().toISOString(),
+});
+
+export const createRoutes = (clients: Clients) => {
+  const router = Router();
+  const apiKey = process.env.ASSEMBLYAI_API_KEY || "";
+  const audioToTextService = new AudioToTextService(apiKey);
+  const conversationService = new ConversationService(clients);
 
   // Endpoint for handling audio file input
-  // @ts-ignore
-  router.post('/converse/audio', upload.single('audio'), async (req: Request, res: Response) => {
-    if (!req.file) {
-      return res.status(400).send({ error: 'No audio file uploaded' })
+  router.post(
+    "/converse/audio",
+    upload.single("audio"),
+    async (req: Request, res: Response): Promise<void> => {
+      try {
+        if (!req.file || !req.file.buffer) {
+          res
+            .status(400)
+            .json(
+              createErrorResponse(
+                "No audio file uploaded or invalid audio data",
+                400
+              )
+            );
+          return;
+        }
+
+        if (!req.body.scenarioName) {
+          res
+            .status(400)
+            .json(createErrorResponse("Scenario name is required", 400));
+          return;
+        }
+
+        const transcribedText = await audioToTextService.convertBufferToText(
+          req.file.buffer
+        );
+        const response = await conversationService.converse(
+          req.body.scenarioName,
+          [{ role: "user", content: transcribedText }]
+        );
+
+        if ("audioBuffer" in response) {
+          res.json(createSuccessResponse(response));
+        } else {
+          res.json(
+            createSuccessResponse({
+              audioBuffer: Buffer.from(""),
+              text: response.text,
+              translation: response.translation,
+            })
+          );
+        }
+      } catch (error) {
+        console.error("Error in /converse/audio:", error);
+        const statusCode =
+          error instanceof Error && error.message.includes("required")
+            ? 400
+            : 500;
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to process audio";
+        res
+          .status(statusCode)
+          .json(createErrorResponse(errorMessage, statusCode));
+      }
     }
-
-    try {
-      const audioFilePath = req.file.path
-      const scenarioName = req.body.scenarioName
-
-      const transcribedText = await audioToTextService.convertAudioToText(audioFilePath)
-
-      const { audioFilePath: responseAudioPath, text, translation } = await conversationService.converse(scenarioName, [
-        { role: 'user', content: transcribedText },
-      ])
-
-      const audioFile = readFileSync(responseAudioPath)
-
-      res.setHeader('Content-Type', 'application/json')
-      res.send({
-        audio: audioFile.toString('base64'), // Base64 encode the audio data
-        germanText: text,
-        englishText: translation
-      })
-    } catch (error) {
-      console.error('Error in /converse/audio:', error)
-      res.status(500).send({ error: 'Failed to process audio' })
-    }
-  })
+  );
 
   // Endpoint for handling direct text input
-  router.post('/converse/text', async (req: Request, res: Response) => {
-    try {
-      const scenarioName = req.body.scenarioName
-      const userText = req.body.text || 'hello'
+  router.post(
+    "/converse/text",
+    async (req: Request, res: Response): Promise<void> => {
+      try {
+        if (!req.body.scenarioName) {
+          res
+            .status(400)
+            .json(createErrorResponse("Scenario name is required", 400));
+          return;
+        }
 
-      const { audioFilePath: responseAudioPath, text, translation } = await conversationService.converse(scenarioName, [
-        { role: 'user', content: userText },
-      ])
+        const response = await conversationService.converse(
+          req.body.scenarioName,
+          [{ role: "user", content: req.body.text || "hello" }]
+        );
 
-      const audioFile = readFileSync(responseAudioPath)
-
-      res.setHeader('Content-Type', 'application/json')
-      res.send({
-        audio: audioFile.toString('base64'),
-        germanText: text,
-        englishText: translation
-      })
-    } catch (error) {
-      console.error('Error in /converse/text:', error)
-      res.status(500).send({ error: 'Failed to generate response' })
+        if ("audioBuffer" in response) {
+          res.json(createSuccessResponse(response));
+        } else {
+          res.json(
+            createSuccessResponse({
+              audioBuffer: Buffer.from(""),
+              text: response.text,
+              translation: response.translation,
+            })
+          );
+        }
+      } catch (error) {
+        console.error("Error in /converse/text:", error);
+        const statusCode =
+          error instanceof Error && error.message.includes("required")
+            ? 400
+            : 500;
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Failed to generate response";
+        res
+          .status(statusCode)
+          .json(createErrorResponse(errorMessage, statusCode));
+      }
     }
-  })
+  );
 
   // Endpoint for API conversation
-  router.post('/api/conversation', async (req: Request, res: Response) => {
-    try {
-      const scenario = req.body.scenario
-      const message = req.body.message || 'hello'
+  router.post(
+    "/api/conversation",
+    async (req: Request, res: Response): Promise<void> => {
+      try {
+        if (!req.body.scenario) {
+          res
+            .status(400)
+            .json(createErrorResponse("Scenario is required", 400));
+          return;
+        }
 
-      const { audioFilePath: responseAudioPath, text, translation } = await conversationService.converse(scenario, [
-        { role: 'user', content: message },
-      ])
+        const response = await conversationService.converse(req.body.scenario, [
+          { role: "user", content: req.body.message || "hello" },
+        ]);
 
-      const audioFile = readFileSync(responseAudioPath)
-
-      res.setHeader('Content-Type', 'application/json')
-      res.send({
-        audio: audioFile.toString('base64'),
-        germanText: text,
-        englishText: translation
-      })
-    } catch (error) {
-      console.error('Error in /api/conversation:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to generate response'
-      const statusCode = error instanceof Error && error.message.includes('required') ? 400 : 500
-      res.status(statusCode).send({
-        error: errorMessage,
-        success: false,
-        timestamp: new Date().toISOString()
-      })
+        if ("audioBuffer" in response) {
+          res.json(createSuccessResponse(response));
+        } else {
+          res.json(
+            createSuccessResponse({
+              audioBuffer: Buffer.from(""),
+              text: response.text,
+              translation: response.translation,
+            })
+          );
+        }
+      } catch (error) {
+        console.error("Error in /api/conversation:", error);
+        const statusCode =
+          error instanceof Error && error.message.includes("required")
+            ? 400
+            : 500;
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Failed to generate response";
+        res
+          .status(statusCode)
+          .json(createErrorResponse(errorMessage, statusCode));
+      }
     }
-  })
+  );
 
-  return router
-}
+  return router;
+};

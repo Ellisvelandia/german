@@ -12,8 +12,8 @@ interface ConversationContext {
 
 export class ConversationManager {
   private conversations: Map<string, ConversationContext>;
-  private readonly maxHistoryLength: number = 10;
-  private readonly contextTimeout: number = 30 * 60 * 1000; // 30 minutes
+  private readonly maxHistoryLength: number = 5; // Reduced from 10 to improve response speed
+  private readonly contextTimeout: number = 15 * 60 * 1000; // Reduced to 15 minutes to free up memory faster
 
   constructor(private deepseekClient: DeepseekClient) {
     this.conversations = new Map();
@@ -52,14 +52,17 @@ export class ConversationManager {
       this.conversations.set(sessionId, context);
     }
 
-    // Update context
+    // Update context with only essential history
+    if (context.history.length >= this.maxHistoryLength) {
+      context.history = context.history.slice(-2); // Keep only the last interaction
+    }
     context.history.push({ role: 'user', content: text });
     context.lastInteraction = new Date();
 
-    // Prepare messages for AI
+    // Prepare messages for AI with minimal context
     const messages = [
       { role: 'system', content: this.getScenarioContext(text, scenario) },
-      ...context.history
+      context.history[context.history.length - 1] // Only use the latest message
     ];
 
     // Get AI response

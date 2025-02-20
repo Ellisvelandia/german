@@ -1,6 +1,5 @@
 import { DeepseekClient } from "../clients/deepseek"
 import { GTTSClient } from "../clients/gTTS"
-import { PollyClient } from "../clients/pollyClient"
 import { Clients } from "../types"
 
 export async function createResources(): Promise<Clients> {

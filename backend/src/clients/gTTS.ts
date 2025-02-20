@@ -1,7 +1,6 @@
-import { existsSync, mkdirSync } from 'fs'
 // @ts-ignore
 import gTTS from 'gtts'
-import { join } from 'path'
+import { Readable } from 'stream'
 
 export class GTTSClient {
   private language: string
@@ -10,25 +9,20 @@ export class GTTSClient {
     this.language = language
   }
 
-  public async convertTextToAudio(text: string): Promise<string> {
+  public async convertTextToAudio(text: string): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       const gtts = new gTTS(text, this.language)
-      const audioDir = join(__dirname, 'audio') // Use a valid directory path
-      const audioFilePath = join(audioDir, `${Date.now()}.mp3`) // Unique file name
+      const chunks: Buffer[] = []
 
-      // Create the audio directory if it doesn't exist
-      if (!existsSync(audioDir)) {
-        mkdirSync(audioDir, { recursive: true })
-      }
-
-      gtts.save(audioFilePath, (err: any) => {
-        if (err) {
-          console.error('Error converting text to audio:', err)
-          reject(err)
-        } else {
-          console.log('Audio file saved:', audioFilePath)
-          resolve(audioFilePath)
-        }
+      const stream = gtts.stream()
+      stream.on('data', (chunk: Buffer) => chunks.push(chunk))
+      stream.on('end', () => {
+        const audioBuffer = Buffer.concat(chunks)
+        resolve(audioBuffer)
+      })
+      stream.on('error', (err: Error) => {
+        console.error('Error converting text to audio:', err)
+        reject(err)
       })
     })
   }

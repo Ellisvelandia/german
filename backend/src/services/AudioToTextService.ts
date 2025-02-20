@@ -27,6 +27,29 @@ export class AudioToTextService {
     }
   }
 
+  public async convertBufferToText(buffer: Buffer): Promise<string> {
+    try {
+      const uploadResponse = await this.uploadAudioBuffer(buffer)
+      const transcriptResponse = await this.createTranscriptionJob(uploadResponse.upload_url)
+      const finalTranscript = await this.pollTranscriptionStatus(transcriptResponse.id)
+
+      return finalTranscript
+    } catch (error) {
+      throw error
+    }
+  }
+
+  private async uploadAudioBuffer(buffer: Buffer) {
+    const response = await axios.post('https://api.assemblyai.com/v2/upload', buffer, {
+      headers: {
+        'Authorization': this.apiKey,
+        'Content-Type': 'application/octet-stream'
+      }
+    })
+
+    return response.data
+  }
+
   private async uploadAudio(filePath: string) {
     const fileStream = fs.createReadStream(filePath)
 
@@ -55,8 +78,9 @@ export class AudioToTextService {
   }
 
   private async pollTranscriptionStatus(transcriptId: string): Promise<string> {
-    const maxAttempts = 30
-    const intervalMs = 3000
+    const maxAttempts = 60
+    const initialIntervalMs = 1000
+    let intervalMs = initialIntervalMs
 
     for (let attempt = 0;attempt < maxAttempts;attempt++) {
       const response = await axios.get(`https://api.assemblyai.com/v2/transcript/${transcriptId}`, {

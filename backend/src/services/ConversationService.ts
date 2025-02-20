@@ -6,14 +6,26 @@ import { TranslationService } from './TranslationService'
 export class ConversationService {
   private clients: Clients
   private translationService: TranslationService
+  private responseCache: Map<string, { text: string; translation: string }>
 
   constructor(clients: Clients) {
     this.clients = clients
     this.translationService = new TranslationService(clients)
+    this.responseCache = new Map()
+  }
+
+  private getCacheKey(scenario: string, messages: ChatCompletionMessageParam[]): string {
+    const lastMessage = messages[messages.length - 1]
+    return `${scenario}:${lastMessage?.content || ''}`
   }
 
   public async converse(scenario: string, messages: ChatCompletionMessageParam[]) {
     try {
+      const cacheKey = this.getCacheKey(scenario, messages)
+      const cachedResponse = this.responseCache.get(cacheKey)
+      if (cachedResponse) {
+        return cachedResponse
+      }
       if (!scenario) {
         throw new Error('Scenario is required')
       }
@@ -27,17 +39,22 @@ export class ConversationService {
         throw new Error('Failed to generate conversation text: Empty response from AI')
       }
 
-      const audioFilePath = await this.clients.gTTS.convertTextToAudio(text)
-      if (!audioFilePath) {
-        throw new Error('Failed to generate audio response: Audio conversion failed')
-      }
-
       const translation = await this.translationService.translateToEnglish(text)
       if (!translation) {
         throw new Error('Failed to translate response: Translation service returned empty result')
       }
 
-      return { text, translation, audioFilePath }
+      // Store only text and translation in cache
+      const response = { text, translation }
+      this.responseCache.set(cacheKey, response)
+
+      // Generate audio buffer on-the-fly without storing
+      const audioBuffer = await this.clients.gTTS.convertTextToAudio(text)
+      if (!audioBuffer || audioBuffer.length === 0) {
+        throw new Error('Failed to generate audio response: Audio conversion failed')
+      }
+
+      return { ...response, audioBuffer }
     } catch (error) {
       console.error('Error in conversation service:', error)
       if (error instanceof Error) {
