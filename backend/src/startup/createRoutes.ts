@@ -98,7 +98,13 @@ export const createRoutes = (clients: any) => {
       })
     } catch (error) {
       console.error('Error in /api/conversation:', error)
-      res.status(500).send({ error: 'Failed to generate response' })
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate response'
+      const statusCode = error instanceof Error && error.message.includes('required') ? 400 : 500
+      res.status(statusCode).send({
+        error: errorMessage,
+        success: false,
+        timestamp: new Date().toISOString()
+      })
     }
   })
 

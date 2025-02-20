@@ -19,14 +19,36 @@ const ChatMessage = ({
   const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
-    if (audioRef.current && audioUrl && !isUser) {
-      audioRef.current.src = audioUrl;
-      audioRef.current.load();
-      audioRef.current.play().catch(error => {
-        console.error('Error auto-playing audio:', error);
-      });
-      setIsPlaying(true);
-    }
+    let isCurrentAudio = true;
+
+    const playAudio = async () => {
+      if (audioRef.current && audioUrl && !isUser) {
+        try {
+          audioRef.current.src = audioUrl;
+          await audioRef.current.load();
+          
+          if (isCurrentAudio) {
+            await audioRef.current.play();
+            setIsPlaying(true);
+          }
+        } catch (error) {
+          console.error('Error auto-playing audio:', error);
+          if (isCurrentAudio) {
+            setIsPlaying(false);
+          }
+        }
+      }
+    };
+
+    playAudio();
+
+    return () => {
+      isCurrentAudio = false;
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+      }
+    };
   }, [audioUrl, isUser]);
 
   const handlePlayAudio = async () => {
