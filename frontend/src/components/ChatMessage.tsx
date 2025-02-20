@@ -20,19 +20,27 @@ const ChatMessage = ({
 
   useEffect(() => {
     if (audioRef.current && audioUrl && !isUser) {
-      audioRef.current.play();
+      audioRef.current.src = audioUrl;
+      audioRef.current.load();
+      audioRef.current.play().catch(error => {
+        console.error('Error auto-playing audio:', error);
+      });
       setIsPlaying(true);
     }
   }, [audioUrl, isUser]);
 
-  const handlePlayAudio = () => {
+  const handlePlayAudio = async () => {
     if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play();
+      try {
+        if (isPlaying) {
+          await audioRef.current.pause();
+        } else {
+          await audioRef.current.play();
+        }
+        setIsPlaying(!isPlaying);
+      } catch (error) {
+        console.error('Error playing/pausing audio:', error);
       }
-      setIsPlaying(!isPlaying);
     }
   };
 
@@ -40,6 +48,10 @@ const ChatMessage = ({
     setIsPlaying(false);
   };
 
+  const handleAudioError = (error: Event) => {
+    console.error('Audio playback error:', error);
+    setIsPlaying(false);
+  };
   const toggleTranslation = () => {
     setShowTranslation((prev) => !prev);
   };
@@ -113,6 +125,8 @@ const ChatMessage = ({
                 ref={audioRef}
                 src={audioUrl}
                 onEnded={handleAudioEnded}
+                onError={(e: React.SyntheticEvent<HTMLAudioElement, Event>) => handleAudioError(e.nativeEvent)}
+                preload="auto"
                 className="hidden"
               />
             )}
