@@ -15,9 +15,23 @@ interface ChatInterfaceProps {
   scenario: string;
 }
 
-const INITIAL_MESSAGES: { [key: string]: string } = {
-  restaurant: "Willkommen im Restaurant! Wie kann ich Ihnen helfen?",
-  supermarket: "Willkommen im Supermarkt! Wonach suchen Sie?"
+const INITIAL_MESSAGES: { [key: string]: { text: string; translation: string } } = {
+  restaurant: {
+    text: "Willkommen im Restaurant! Wie kann ich Ihnen helfen?",
+    translation: "Welcome to the restaurant! How can I help you?"
+  },
+  supermarket: {
+    text: "Willkommen im Supermarkt! Wonach suchen Sie?",
+    translation: "Welcome to the supermarket! What are you looking for?"
+  },
+  train: {
+    text: "Willkommen am Bahnhof! Wie kann ich Ihnen helfen?",
+    translation: "Welcome to the train station! How can I help you?"
+  },
+  conversation: {
+    text: "Willkommen! Worüber möchten Sie sprechen?",
+    translation: "Welcome! What would you like to talk about?"
+  }
 };
 
 const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
@@ -32,13 +46,21 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
 
   useEffect(() => {
     // Initialize chat with scenario-specific greeting
-    const initialMessage = INITIAL_MESSAGES[scenario] || "Willkommen! Wie kann ich Ihnen helfen?";
+    const initialMessage = INITIAL_MESSAGES[scenario] || INITIAL_MESSAGES.conversation;
     setMessages([{
-      text: initialMessage,
-      translation: "Welcome! How can I help you?",
+      text: initialMessage.text,
+      translation: initialMessage.translation,
       isUser: false,
       audioUrl: undefined
     }]);
+
+    // Cleanup function
+    return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        stopRecording();
+      }
+      stop();
+    };
   }, [scenario]);
 
   useEffect(() => {
@@ -50,20 +72,19 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
 
-    // Stop any playing audio before sending new message
-    stop();
-
-    const userMessage: Message = { text: inputText, isUser: true };
-    setMessages(prev => [...prev, userMessage]);
-    setInputText('');
-    setIsLoading(true);
-
     try {
+      // Stop any playing audio before sending new message
+      stop();
+
+      const userMessage: Message = { text: inputText, isUser: true };
+      setMessages(prev => [...prev, userMessage]);
+      setInputText('');
+      setIsLoading(true);
+
       const response = await apiService.sendMessage(scenario, inputText);
 
-      // Ensure we have all required fields from the response
-      if (!response.text || !response.translation || !response.audio) {
-        throw new Error('Invalid response: missing required fields');
+      if (!response?.text || !response?.translation || !response?.audio) {
+        throw new Error('Invalid response from server');
       }
 
       const audioUrl = `data:audio/mp3;base64,${response.audio}`;
@@ -73,12 +94,15 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
         audioUrl: audioUrl,
         isUser: false
       };
+
       setMessages(prev => [...prev, botMessage]);
       
       // Auto-play the response audio
       if (audioRef.current) {
         audioRef.current.src = audioUrl;
-        play();
+        await play().catch(error => {
+          console.error('Error playing audio:', error);
+        });
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -100,18 +124,19 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        setIsLoading(true);
         try {
+          setIsLoading(true);
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
           const response = await apiService.sendAudio(scenario, audioBlob);
 
-          // Ensure we have all required fields from the response
-          if (!response.text || !response.translation || !response.audio) {
-            throw new Error('Invalid response: missing required fields');
+          if (!response?.text || !response?.translation || !response?.audio) {
+            throw new Error('Invalid response from server');
           }
 
           const botMessage: Message = {
@@ -137,6 +162,7 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
       setIsRecording(true);
     } catch (error) {
       console.error('Error starting recording:', error);
+      alert('Could not access microphone. Please ensure microphone permissions are granted.');
     }
   };
 
@@ -149,8 +175,8 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
   };
 
   return (
-    <div className="h-full flex flex-col p-4">
-      <div className="flex-1 overflow-y-auto mb-4 space-y-4">
+    <div className="h-full flex flex-col p-2 sm:p-4 max-w-4xl mx-auto w-full">
+      <div className="flex-1 overflow-y-auto mb-2 sm:mb-4 space-y-2 sm:space-y-4">
         {messages.map((message, index) => (
           <ChatMessage
             key={index}
@@ -161,19 +187,20 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
           />
         ))}
         {isLoading && (
-          <div className="flex justify-center items-center py-4">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          <div className="flex justify-center items-center py-2 sm:py-4">
+            <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-500"></div>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
-      <div className="flex items-center space-x-2 p-4 border-t">
+      <div className="flex items-center space-x-2 p-2 sm:p-4 border-t">
         <button
           onClick={isRecording ? stopRecording : startRecording}
-          className={`p-2 rounded-full ${isRecording ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'} text-white`}
+          className={`p-2 rounded-full flex-shrink-0 ${isRecording ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'} text-white transition-colors duration-200`}
           disabled={isLoading}
+          title={isRecording ? 'Stop recording' : 'Start recording'}
         >
-          {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
+          {isRecording ? <MicOff size={18} className="sm:w-5 sm:h-5" /> : <Mic size={18} className="sm:w-5 sm:h-5" />}
         </button>
         <input
           type="text"
@@ -181,15 +208,16 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
           onChange={(e) => setInputText(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
           placeholder="Type your message in German..."
-          className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 p-2 text-sm sm:text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow duration-200"
           disabled={isLoading || isRecording}
         />
         <button
           onClick={handleSendMessage}
-          className="p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white"
+          className="p-2 rounded-full flex-shrink-0 bg-blue-500 hover:bg-blue-600 text-white transition-colors duration-200"
           disabled={isLoading || !inputText.trim() || isRecording}
+          title="Send message"
         >
-          <Send size={20} />
+          <Send size={18} className="sm:w-5 sm:h-5" />
         </button>
       </div>
     </div>
