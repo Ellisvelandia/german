@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Play, Pause } from "lucide-react";
+import { Play, Pause, Mic } from "lucide-react";
 import { useAudioManager } from "../hooks/useAudioManager";
 
 interface ChatMessageProps {
@@ -8,6 +8,7 @@ interface ChatMessageProps {
   audioUrl?: string;
   isUser: boolean;
   isTranscribing?: boolean;
+  isTranscribed?: boolean;
 }
 
 const ChatMessage = ({
@@ -16,13 +17,14 @@ const ChatMessage = ({
   audioUrl,
   isUser,
   isTranscribing = false,
+  isTranscribed = false,
 }: ChatMessageProps) => {
   const [showTranslation, setShowTranslation] = useState(false);
   const { audioRef, isPlaying, playAudio, pauseAudio } = useAudioManager();
 
   const handlePlayAudio = async () => {
     if (!audioUrl) return;
-    
+
     try {
       if (isPlaying) {
         pauseAudio();
@@ -31,15 +33,14 @@ const ChatMessage = ({
       }
     } catch (error) {
       console.error("Error playing/pausing audio:", error);
+      // Show a user-friendly error message
+      alert("Unable to play audio. Please try again later.");
     }
   };
 
   const toggleTranslation = () => {
     setShowTranslation((prev) => !prev);
   };
-
-  // Note: cleanText is no longer needed here because text and translation are pre-cleaned
-  // before being passed as props from the message creation logic (e.g., useChatMessages).
 
   return (
     <div
@@ -63,9 +64,14 @@ const ChatMessage = ({
       >
         {isUser ? (
           <div className="space-y-2">
-            <p className="text-sm sm:text-base leading-relaxed break-words">
-              {text} {/* Display pre-cleaned user text */}
-            </p>
+            <div className="flex items-start gap-2">
+              {isTranscribed && (
+                <Mic className="w-4 h-4 text-blue-200 flex-shrink-0 mt-1" />
+              )}
+              <p className="text-sm sm:text-base leading-relaxed break-words">
+                {text}
+              </p>
+            </div>
             {isTranscribing && (
               <p className="text-xs text-blue-200 italic">
                 Transcribing audio...
@@ -76,10 +82,9 @@ const ChatMessage = ({
           <div className="space-y-2 sm:space-y-3">
             <div className="flex items-start space-x-2">
               <p className="text-base sm:text-xl font-medium text-gray-800 leading-relaxed break-words flex-grow">
-                {text} {/* Display pre-cleaned AI text */}
+                {text}
               </p>
               {audioUrl && (
-                // Only show the play button if audioUrl is provided
                 <button
                   onClick={handlePlayAudio}
                   className="flex-shrink-0 flex items-center justify-center p-1.5 sm:p-2 rounded-full bg-blue-100 hover:bg-blue-200 transition-colors ml-2"
@@ -97,7 +102,7 @@ const ChatMessage = ({
             <div className="text-sm sm:text-base text-gray-600 leading-relaxed italic break-words">
               {showTranslation ? (
                 <>
-                  {translation} {/* Display pre-cleaned translation */}
+                  {translation}
                   <button
                     onClick={toggleTranslation}
                     className="text-blue-600 underline ml-2 text-sm sm:text-base hover:text-blue-700"
@@ -114,7 +119,9 @@ const ChatMessage = ({
                 </button>
               )}
             </div>
-            <audio ref={audioRef} className="hidden" />
+            <audio ref={audioRef} className="hidden" preload="auto">
+              <source type="audio/mpeg" />
+            </audio>
           </div>
         )}
       </div>

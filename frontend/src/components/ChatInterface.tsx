@@ -23,9 +23,14 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
 
   const {
     isRecording,
-    toggleRecording,
+    toggleRecording
   } = useSpeechRecognition({
-    onRecordingComplete: handleAudioResponse,
+    onRecordingComplete: async (audioBlob) => {
+      if (transcription.trim()) {
+        await handleAudioResponse(audioBlob, transcription);
+        setTranscription(''); // Clear transcription after sending
+      }
+    },
     onTranscriptionChange: (text) => setTranscription(text),
     onError: (error) => {
       console.error('Error recording audio:', error);
@@ -33,8 +38,7 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
     },
   });
 
-  const navigate = useNavigate(); // Initialize useNavigate hook
-
+  const navigate = useNavigate();
   const { stopAudio } = useAudioManager();
 
   const handleSendMessage = async () => {
@@ -71,12 +75,18 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
             translation={message.translation || ''}
             audioUrl={message.audioUrl}
             isUser={message.isUser}
+            isTranscribed={message.isTranscribed}
           />
         </div>
       ))}
       {isRecording && transcription && (
         <div className="transition-all duration-300 ease-in-out transform hover:scale-[1.01]">
-          <ChatMessage text={transcription} translation="Live transcription" isUser={true} />
+          <ChatMessage 
+            text={transcription}
+            translation=""
+            isUser={true}
+            isTranscribing={true}
+          />
         </div>
       )}
       {isLoading && (

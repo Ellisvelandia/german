@@ -9,6 +9,7 @@ interface SpeechRecognitionHookProps {
 interface SpeechRecognitionHookReturn {
   isRecording: boolean;
   toggleRecording: () => Promise<void>;
+  stopRecording: () => void;
   error: Error | null;
 }
 
@@ -22,18 +23,22 @@ export const useSpeechRecognition = (
   const streamRef = useRef<MediaStream | null>(null);
   const speechRecognitionRef = useRef<any>(null);
 
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+    }
+    if (speechRecognitionRef.current) {
+      speechRecognitionRef.current.stop();
+    }
+    setIsRecording(false);
+  }, []);
+
   const toggleRecording = useCallback(async () => {
     if (isRecording) {
-      if (mediaRecorderRef.current) {
-        mediaRecorderRef.current.stop();
-      }
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-      }
-      if (speechRecognitionRef.current) {
-        speechRecognitionRef.current.stop();
-      }
-      setIsRecording(false);
+      stopRecording();
     } else {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -96,9 +101,14 @@ export const useSpeechRecognition = (
         onError?.(err);
       }
     }
-  }, [isRecording, onRecordingComplete, onTranscriptionChange, onError]);
+  }, [isRecording, onRecordingComplete, onTranscriptionChange, onError, stopRecording]);
 
-  return { isRecording, toggleRecording, error };
+  return {
+    isRecording,
+    toggleRecording,
+    stopRecording,
+    error
+  };
 };
 
 // Add TypeScript declarations for the Web Speech API

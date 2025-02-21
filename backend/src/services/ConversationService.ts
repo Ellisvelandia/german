@@ -54,7 +54,13 @@ export class ConversationService {
         throw new Error('Failed to generate audio response: Audio conversion failed')
       }
 
-      return { ...response, audioBuffer }
+      // Convert to base64 and specify the correct content type
+      const audioBase64 = audioBuffer.toString('base64')
+      return {
+        ...response,
+        audio: audioBase64,
+        contentType: 'audio/mpeg' // Explicitly specify the content type
+      }
     } catch (error) {
       console.error('Error in conversation service:', error)
       if (error instanceof Error) {

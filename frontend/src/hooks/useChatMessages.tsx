@@ -1,13 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { apiService } from "../services/api";
 import { useAudio } from "./useAudio";
-
-interface Message {
-  text: string; // Cleaned text (no emojis/special symbols)
-  translation?: string; // Cleaned translation (no emojis/special symbols)
-  audioUrl?: string; // Generated from cleaned text
-  isUser: boolean;
-}
+import { Message } from "../types";
 
 interface UseChatMessagesProps {
   scenario: string;
@@ -82,7 +76,9 @@ export const useChatMessages = ({ scenario }: UseChatMessagesProps) => {
 
       const cleanedResponseText = cleanText(response.text); // Clean AI response text
       const cleanedTranslation = cleanText(response.translation); // Clean translation
-      const audioUrl = `data:audio/mp3;base64,${response.audio}`; // Audio is already from cleaned text via API
+      const audioUrl = response.audio 
+        ? `data:audio/mpeg;base64,${response.audio}`  // Changed from mp3 to mpeg
+        : undefined;
       const botMessage: Message = {
         text: cleanedResponseText,
         translation: cleanedTranslation,
@@ -100,27 +96,37 @@ export const useChatMessages = ({ scenario }: UseChatMessagesProps) => {
     }
   };
 
-  const handleAudioResponse = async (audioBlob: Blob) => {
+  const handleAudioResponse = async (
+    audioBlob: Blob,
+    transcribedText: string
+  ) => {
     try {
       setIsLoading(true);
+      // First, add the transcribed user message
+      const userMessage: Message = {
+        text: transcribedText,
+        isUser: true,
+        isTranscribed: true, // Add this flag to indicate it was from voice
+      };
+      setMessages((prev) => [...prev, userMessage]);
+
+      // Then process the audio response
       const response = await apiService.sendAudio(scenario, audioBlob);
 
       if (!response?.text || !response?.translation || !response?.audio) {
         throw new Error("Invalid response from server");
       }
 
-      const cleanedResponseText = cleanText(response.text); // Clean AI response text
-      const cleanedTranslation = cleanText(response.translation); // Clean translation
-      const audioUrl = `data:audio/mp3;base64,${response.audio}`; // Audio from API
       const botMessage: Message = {
-        text: cleanedResponseText,
-        translation: cleanedTranslation,
-        audioUrl,
+        text: cleanText(response.text),
+        translation: cleanText(response.translation),
+        audioUrl: `data:audio/mp3;base64,${response.audio}`,
         isUser: false,
       };
+
       setMessages((prev) => [...prev, botMessage]);
     } catch (error) {
-      console.error("Error sending audio:", error);
+      console.error("Error processing audio:", error);
       addErrorMessage();
     } finally {
       setIsLoading(false);
