@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ChatMessage from './ChatMessage';
-import { Mic, Send, MicOff, ArrowLeft } from 'lucide-react'; // Add ArrowLeft icon
+import { Mic, Send, MicOff, ArrowLeft } from 'lucide-react';
 import { useChatMessages } from '../hooks/useChatMessages';
-import { useAudioRecorder } from '../hooks/useAudioRecorder';
+import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
+import { useAudioManager } from '../hooks/useAudioManager';
 
 interface ChatInterfaceProps {
   scenario: string;
@@ -22,9 +23,8 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
 
   const {
     isRecording,
-    startRecording,
-    stopRecording,
-  } = useAudioRecorder({
+    toggleRecording,
+  } = useSpeechRecognition({
     onRecordingComplete: handleAudioResponse,
     onTranscriptionChange: (text) => setTranscription(text),
     onError: (error) => {
@@ -35,9 +35,12 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
 
   const navigate = useNavigate(); // Initialize useNavigate hook
 
+  const { stopAudio } = useAudioManager();
+
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
     try {
+      stopAudio(); // Stop any playing audio before sending new message
       await sendMessage(inputText);
       setInputText('');
     } catch (error) {
@@ -46,6 +49,13 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
       }
     }
   };
+
+  // Stop audio playback when recording starts
+  useEffect(() => {
+    if (isRecording) {
+      stopAudio();
+    }
+  }, [isRecording, stopAudio]);
 
   // Handle back navigation
   const handleBack = () => {
@@ -88,7 +98,7 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
       )}
       <div className="flex items-center gap-3 p-4 border-t border-gray-200 bg-white rounded-lg shadow-sm">
         <button
-          onClick={isRecording ? stopRecording : startRecording}
+          onClick={toggleRecording}
           className={`p-3 rounded-full flex-shrink-0 ${isRecording ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-blue-500 hover:bg-blue-600'} text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${isRecording ? 'focus:ring-red-500' : 'focus:ring-blue-500'}`}
           disabled={isLoading}
           title={isRecording ? 'Stop recording' : 'Start recording'}

@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from "react";
 
 interface SpeechRecognitionHookProps {
   onRecordingComplete: (file: File) => void;
+  onTranscriptionChange?: (text: string) => void;
   onError?: (error: Error) => void;
 }
 
@@ -12,13 +13,14 @@ interface SpeechRecognitionHookReturn {
 }
 
 export const useSpeechRecognition = (
-  { onRecordingComplete, onError }: SpeechRecognitionHookProps
+  { onRecordingComplete, onTranscriptionChange, onError }: SpeechRecognitionHookProps
 ): SpeechRecognitionHookReturn => {
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const speechRecognitionRef = useRef<any>(null);
 
   const toggleRecording = useCallback(async () => {
     if (isRecording) {
@@ -28,13 +30,14 @@ export const useSpeechRecognition = (
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
       }
+      if (speechRecognitionRef.current) {
+        speechRecognitionRef.current.stop();
+      }
       setIsRecording(false);
     } else {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         streamRef.current = stream;
-        const tracks = stream.getAudioTracks();
-        tracks.forEach(track => track.getSettings());
 
         const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         const supportedType = isSafari ? "audio/mp4" : "audio/webm;codecs=opus";
@@ -42,6 +45,33 @@ export const useSpeechRecognition = (
 
         mediaRecorderRef.current = mediaRecorder;
         audioChunksRef.current = [];
+
+        // Initialize speech recognition
+        if ('webkitSpeechRecognition' in window) {
+          const SpeechRecognition = window.webkitSpeechRecognition;
+          const recognition = new SpeechRecognition();
+          recognition.continuous = true;
+          recognition.interimResults = true;
+          recognition.lang = 'de-DE'; // Set to German
+
+          recognition.onresult = (event: any) => {
+            const transcript = Array.from(event.results)
+              .map((result: any) => result[0])
+              .map(result => result.transcript)
+              .join('');
+            
+            onTranscriptionChange?.(transcript);
+          };
+
+          recognition.onerror = (event: any) => {
+            const err = new Error(`Speech recognition error: ${event.error}`);
+            setError(err);
+            onError?.(err);
+          };
+
+          recognition.start();
+          speechRecognitionRef.current = recognition;
+        }
 
         mediaRecorder.ondataavailable = (event) => {
           if (event.data.size > 0) {
@@ -66,7 +96,14 @@ export const useSpeechRecognition = (
         onError?.(err);
       }
     }
-  }, [isRecording, onRecordingComplete, onError]);
+  }, [isRecording, onRecordingComplete, onTranscriptionChange, onError]);
 
   return { isRecording, toggleRecording, error };
 };
+
+// Add TypeScript declarations for the Web Speech API
+declare global {
+  interface Window {
+    webkitSpeechRecognition: any;
+  }
+}
