@@ -3,9 +3,9 @@ import { Play, Pause } from "lucide-react";
 import { useAudioManager } from "../hooks/useAudioManager";
 
 interface ChatMessageProps {
-  text: string; // Pre-cleaned text (no emojis/special symbols)
-  translation: string; // Pre-cleaned translation (no emojis/special symbols)
-  audioUrl?: string; // Generated from pre-cleaned text
+  text: string;
+  translation: string;
+  audioUrl?: string;
   isUser: boolean;
   isTranscribing?: boolean;
 }
@@ -21,10 +21,12 @@ const ChatMessage = ({
   const { audioRef, isPlaying, playAudio, pauseAudio } = useAudioManager();
 
   const handlePlayAudio = async () => {
+    if (!audioUrl) return;
+    
     try {
       if (isPlaying) {
         pauseAudio();
-      } else if (audioUrl) {
+      } else {
         await playAudio(audioUrl);
       }
     } catch (error) {
@@ -77,11 +79,11 @@ const ChatMessage = ({
                 {text} {/* Display pre-cleaned AI text */}
               </p>
               {audioUrl && (
+                // Only show the play button if audioUrl is provided
                 <button
                   onClick={handlePlayAudio}
                   className="flex-shrink-0 flex items-center justify-center p-1.5 sm:p-2 rounded-full bg-blue-100 hover:bg-blue-200 transition-colors ml-2"
                   title="Play pronunciation"
-                  disabled={!audioUrl}
                 >
                   {isPlaying ? (
                     <Pause className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />

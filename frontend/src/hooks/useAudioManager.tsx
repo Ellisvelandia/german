@@ -16,6 +16,9 @@ export const useAudioManager = (): UseAudioManagerReturn => {
   const playAudio = useCallback(async (audioSrc: string) => {
     if (!audioSrc) return;
     try {
+      if (audioRef.current) {
+        audioRef.current.src = audioSrc;
+      }
       await play();
     } catch (err) {
       console.error('Error playing audio:', err);
