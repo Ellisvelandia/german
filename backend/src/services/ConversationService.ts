@@ -83,7 +83,7 @@ export class ConversationService {
     const systemPrompt = scenarioInstance.getSystemPrompt(state)
     const systemMessage: ChatCompletionMessageParam = { role: 'system', content: systemPrompt }
 
-    const defaultUserMessage: ChatCompletionMessageParam = { role: 'user', content: 'Hallo!' }
+    const defaultUserMessage: ChatCompletionMessageParam = { role: 'user', content: 'Olá!' }
     const conversationMessages = isConversationNew ? [systemMessage, defaultUserMessage] : [systemMessage, ...messages]
 
     try {

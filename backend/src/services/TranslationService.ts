@@ -9,11 +9,11 @@ export class TranslationService {
     this.clients = clients
   }
 
-  public async translateToEnglish(germanText: string): Promise<string> {
-    const systemPrompt = "You are a German to English translator. Translate the following German text to English. Only respond with the English translation, nothing else."
+  public async translateToEnglish(portugueseText: string): Promise<string> {
+    const systemPrompt = "You are a Brazilian Portuguese to English translator. Translate the following Portuguese text to English. Only respond with the English translation, nothing else."
     const messages: ChatCompletionMessageParam[] = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: germanText }
+      { role: 'user', content: portugueseText }
     ]
 
     try {

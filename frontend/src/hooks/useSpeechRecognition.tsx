@@ -57,7 +57,7 @@ export const useSpeechRecognition = (
           const recognition = new SpeechRecognition();
           recognition.continuous = true;
           recognition.interimResults = true;
-          recognition.lang = 'de-DE'; // Set to German
+          recognition.lang = 'pt-BR'; // Set to German
 
           recognition.onresult = (event: any) => {
             const transcript = Array.from(event.results)

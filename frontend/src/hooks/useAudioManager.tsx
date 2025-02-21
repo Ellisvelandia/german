@@ -1,16 +1,7 @@
 import { useCallback } from 'react';
 import { useAudio } from './useAudio';
 
-interface UseAudioManagerReturn {
-  audioRef: React.RefObject<HTMLAudioElement>;
-  isPlaying: boolean;
-  error: Error | null;
-  playAudio: (audioSrc: string) => Promise<void>;
-  pauseAudio: () => void;
-  stopAudio: () => void;
-}
-
-export const useAudioManager = (): UseAudioManagerReturn => {
+export const useAudioManager = () => {
   const { audioRef, isPlaying, play, pause, stop, error } = useAudio({});
   let cleanupRef: (() => void) | undefined;
 
@@ -22,47 +13,57 @@ export const useAudioManager = (): UseAudioManagerReturn => {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
         
-        // Cleanup previous URL if exists
         if (cleanupRef) {
           cleanupRef();
         }
 
-        // Verify and clean the audio source format
-        if (!audioSrc.startsWith('data:audio/')) {
-          throw new Error('Invalid audio format');
+        // Set the source
+        audioRef.current.src = audioSrc;
+
+        // Find or create source element
+        const sourceElement = audioRef.current.querySelector('source') || 
+                            document.createElement('source');
+        sourceElement.src = audioSrc;
+        
+        // Set appropriate MIME type
+        if (audioSrc.startsWith('data:audio/mp3')) {
+          sourceElement.type = 'audio/mp3';
+        } else if (audioSrc.startsWith('data:audio/mpeg')) {
+          sourceElement.type = 'audio/mpeg';
+        } else {
+          sourceElement.type = 'audio/mpeg'; // default type
         }
 
-        // Create a new Blob from the base64 data
-        const base64Data = audioSrc.split(',')[1];
-        const binaryData = atob(base64Data);
-        const arrayBuffer = new ArrayBuffer(binaryData.length);
-        const uint8Array = new Uint8Array(arrayBuffer);
-        
-        for (let i = 0; i < binaryData.length; i++) {
-          uint8Array[i] = binaryData.charCodeAt(i);
+        // Ensure source element is in the audio element
+        if (!audioRef.current.contains(sourceElement)) {
+          audioRef.current.appendChild(sourceElement);
         }
-        
-        const audioBlob = new Blob([uint8Array], { type: 'audio/mpeg' });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        
-        audioRef.current.src = audioUrl;
-        
-        // Wait for the audio to be loaded before playing
+
+        // Wait for the audio to be loaded
         await new Promise((resolve, reject) => {
-          if (!audioRef.current) return reject('No audio element');
+          if (!audioRef.current) return reject('No audio reference');
           
-          audioRef.current.onloadeddata = resolve;
-          audioRef.current.onerror = () => {
-            console.error('Audio loading error:', audioRef.current?.error);
-            reject(audioRef.current?.error || 'Failed to load audio');
+          const handleLoad = () => {
+            audioRef.current?.removeEventListener('loadeddata', handleLoad);
+            resolve(true);
           };
+          
+          const handleError = () => {
+            audioRef.current?.removeEventListener('error', handleError);
+            console.error('Audio loading error:', audioRef.current?.error);
+            reject(new Error(`Failed to load audio: ${audioRef.current?.error?.message}`));
+          };
+          
+          audioRef.current.addEventListener('loadeddata', handleLoad);
+          audioRef.current.addEventListener('error', handleError);
         });
 
         await play();
         
-        // Store cleanup function
         cleanupRef = () => {
-          URL.revokeObjectURL(audioUrl);
+          if (audioSrc.startsWith('blob:')) {
+            URL.revokeObjectURL(audioSrc);
+          }
         };
       }
     } catch (err) {
@@ -88,4 +89,10 @@ export const useAudioManager = (): UseAudioManagerReturn => {
     stopAudio
   };
 };
+
+
+
+
+
+
 

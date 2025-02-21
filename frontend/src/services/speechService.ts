@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8002';
 
-export const initializeSpeechRecognition = (lang = 'de-DE') => {
+export const initializeSpeechRecognition = (lang = 'pt-BR') => { // Changed from 'de-DE' to 'pt-BR'
   if (!('webkitSpeechRecognition' in window)) {
     throw new Error('Speech recognition not supported');
   }

@@ -7,8 +7,8 @@ import { Clients } from "../types";
 // Define interfaces for request and response types
 interface ConversationResponse {
   audio: string;
-  germanText: string;
-  englishText: string;
+  text: string;
+  translation: string;
   success: boolean;
   timestamp: string;
 }
@@ -40,19 +40,26 @@ const createErrorResponse = (
 
 // Helper function to create standardized success response
 const createSuccessResponse = (data: {
-  audioBuffer: Buffer;
   text: string;
   translation: string;
+  audio?: string;
+  audioBuffer?: Buffer;
 }): ConversationResponse => {
-  // Ensure we have a non-empty audio buffer, or use a minimal valid audio file
-  const audioData = data.audioBuffer.length > 0
-    ? data.audioBuffer
-    : Buffer.from('SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAADzABtbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1t//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAA8w2tt+t', 'base64');
+  let audioData: Buffer;
+  
+  if (data.audioBuffer && Buffer.isBuffer(data.audioBuffer)) {
+    audioData = data.audioBuffer;
+  } else if (data.audio) {
+    audioData = Buffer.from(data.audio, 'base64');
+  } else {
+    // Minimal valid audio file as fallback
+    audioData = Buffer.from('SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAADzABtbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1t//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAA8w2tt+t', 'base64');
+  }
 
   return {
     audio: audioData.toString('base64'),
-    germanText: data.text,
-    englishText: data.translation,
+    text: data.text,
+    translation: data.translation,
     success: true,
     timestamp: new Date().toISOString(),
   };
@@ -73,12 +80,7 @@ export const createRoutes = (clients: Clients) => {
         if (!req.file || !req.file.buffer) {
           res
             .status(400)
-            .json(
-              createErrorResponse(
-                "No audio file uploaded or invalid audio data",
-                400
-              )
-            );
+            .json(createErrorResponse("No audio file uploaded or invalid audio data", 400));
           return;
         }
 
@@ -97,17 +99,7 @@ export const createRoutes = (clients: Clients) => {
           [{ role: "user", content: transcribedText }]
         );
 
-        if ("audioBuffer" in response) {
-          res.json(createSuccessResponse(response));
-        } else {
-          res.json(
-            createSuccessResponse({
-              audioBuffer: Buffer.from(""),
-              text: response.text,
-              translation: response.translation,
-            })
-          );
-        }
+        res.json(createSuccessResponse(response));
       } catch (error) {
         console.error("Error in /converse/audio:", error);
         const statusCode =
@@ -137,20 +129,10 @@ export const createRoutes = (clients: Clients) => {
 
         const response = await conversationService.converse(
           req.body.scenarioName,
-          [{ role: "user", content: req.body.text || "hello" }]
+          [{ role: "user", content: req.body.text || "olá" }]
         );
 
-        if ("audioBuffer" in response) {
-          res.json(createSuccessResponse(response));
-        } else {
-          res.json(
-            createSuccessResponse({
-              audioBuffer: Buffer.from(""),
-              text: response.text,
-              translation: response.translation,
-            })
-          );
-        }
+        res.json(createSuccessResponse(response));
       } catch (error) {
         console.error("Error in /converse/text:", error);
         const statusCode =
@@ -158,9 +140,7 @@ export const createRoutes = (clients: Clients) => {
             ? 400
             : 500;
         const errorMessage =
-          error instanceof Error
-            ? error.message
-            : "Failed to generate response";
+          error instanceof Error ? error.message : "Failed to generate response";
         res
           .status(statusCode)
           .json(createErrorResponse(errorMessage, statusCode));
@@ -181,20 +161,10 @@ export const createRoutes = (clients: Clients) => {
         }
 
         const response = await conversationService.converse(req.body.scenario, [
-          { role: "user", content: req.body.message || "hello" },
+          { role: "user", content: req.body.message || "olá" }
         ]);
 
-        if ("audioBuffer" in response) {
-          res.json(createSuccessResponse(response));
-        } else {
-          res.json(
-            createSuccessResponse({
-              audioBuffer: Buffer.from(""),
-              text: response.text,
-              translation: response.translation,
-            })
-          );
-        }
+        res.json(createSuccessResponse(response));
       } catch (error) {
         console.error("Error in /api/conversation:", error);
         const statusCode =
@@ -202,9 +172,7 @@ export const createRoutes = (clients: Clients) => {
             ? 400
             : 500;
         const errorMessage =
-          error instanceof Error
-            ? error.message
-            : "Failed to generate response";
+          error instanceof Error ? error.message : "Failed to generate response";
         res
           .status(statusCode)
           .json(createErrorResponse(errorMessage, statusCode));

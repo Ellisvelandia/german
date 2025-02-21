@@ -19,12 +19,13 @@ export class ConversationManager {
     this.conversations = new Map();
   }
 
-  private getScenarioContext(text: string, scenario: string): string {
+  private getScenarioContext(scenario: string): string {
     const contextMap: { [key: string]: string } = {
-      restaurant: 'You are a friendly German restaurant server. Focus on food, drinks, orders, and dining experience.',
-      supermarket: 'You are a helpful German supermarket assistant. Focus on products, locations, prices, and shopping assistance.',
-      train: 'You are a knowledgeable German train station attendant. Focus on schedules, platforms, tickets, and travel information.',
-      conversation: 'You are a native German speaker having a casual conversation. Be friendly and engaging.'
+      supermarket: 'You are a helpful Brazilian Portuguese supermarket assistant. Focus on products, locations, prices, and shopping assistance.',
+      train: 'You are a knowledgeable Brazilian Portuguese train station attendant. Focus on schedules, platforms, tickets, and travel information.',
+      restaurant: 'You are a Brazilian Portuguese speaking waiter at a restaurant. Focus on menu items, orders, and dining assistance.',
+      conversation: 'You are a native Brazilian Portuguese speaker having a casual conversation. Be friendly, engaging, and help the user practice everyday Brazilian Portuguese.',
+      'free conversation': 'You are a friendly Brazilian Portuguese conversation partner. Maintain a casual and encouraging tone. Keep responses natural and help the user practice colloquial Brazilian Portuguese.'
     };
 
     return contextMap[scenario] || contextMap.conversation;
@@ -61,7 +62,7 @@ export class ConversationManager {
 
     // Prepare messages for AI with minimal context
     const messages = [
-      { role: 'system', content: this.getScenarioContext(text, scenario) },
+      { role: 'system', content: this.getScenarioContext(scenario) },
       context.history[context.history.length - 1] // Only use the latest message
     ];
 

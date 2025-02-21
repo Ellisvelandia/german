@@ -65,7 +65,7 @@ export class AudioToTextService {
 
   private async createTranscriptionJob(audioUrl: string) {
     const response = await axios.post('https://api.assemblyai.com/v2/transcript',
-      { audio_url: audioUrl, language_code: 'de' },
+      { audio_url: audioUrl, language_code: 'pt' }, // Changed from 'de' to 'pt'
       {
         headers: {
           'Authorization': this.apiKey,

@@ -15,30 +15,30 @@ interface Scenario {
 const scenarios: Scenario[] = [
   {
     id: 'restaurant',
-    name: 'Restaurant',
+    name: 'Restaurante',
     icon: <Utensils className="h-8 w-8" />,
-    description: 'Practice ordering food and drinks in a German restaurant',
+    description: 'Pratique fazer pedidos em português em um restaurante brasileiro',
     route: '/restaurant'
   },
   {
     id: 'supermarket',
-    name: 'Supermarket',
+    name: 'Supermercado',
     icon: <ShoppingCart className="h-8 w-8" />,
-    description: 'Learn how to shop for groceries in German',
+    description: 'Aprenda a fazer compras em português no supermercado',
     route: '/shopping'
   },
   {
     id: 'train',
-    name: 'Train Station',
+    name: 'Estação de Trem',
     icon: <Train className="h-8 w-8" />,
-    description: 'Navigate German public transportation',
+    description: 'Navegue pelo transporte público em português',
     route: '/train'
   },
   {
     id: 'conversation',
-    name: 'Free Conversation',
+    name: 'Conversa Livre',
     icon: <MessageCircle className="h-8 w-8" />,
-    description: 'Practice German in an open conversation',
+    description: 'Pratique português em uma conversa aberta',
     route: '/conversation'
   }
 ];
@@ -56,8 +56,8 @@ const ScenarioSelector = () => {
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">Choose Your Learning Scenario</h1>
-          <p className="text-xl text-gray-600">Select an environment to practice your German conversation skills</p>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Escolha Seu Cenário de Aprendizado</h1>
+          <p className="text-xl text-gray-600">Selecione um ambiente para praticar suas habilidades de conversação em português</p>
         </div>
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-2">

@@ -7,25 +7,24 @@ interface UseChatMessagesProps {
   scenario: string;
 }
 
-const INITIAL_MESSAGES: Record<string, { text: string; translation: string }> =
-  {
-    restaurant: {
-      text: "Willkommen im Restaurant! Wie kann ich Ihnen helfen?",
-      translation: "Welcome to the restaurant! How can I help you?",
-    },
-    supermarket: {
-      text: "Willkommen im Supermarkt! Wonach suchen Sie?",
-      translation: "Welcome to the supermarket! What are you looking for?",
-    },
-    train: {
-      text: "Willkommen am Bahnhof! Wie kann ich Ihnen helfen?",
-      translation: "Welcome to the train station! How can I help you?",
-    },
-    conversation: {
-      text: "Willkommen! Worüber möchten Sie sprechen?",
-      translation: "Welcome! What would you like to talk about?",
-    },
-  };
+const INITIAL_MESSAGES: Record<string, { text: string; translation: string }> = {
+  restaurant: {
+    text: "Bem-vindo ao restaurante! Como posso ajudar?",
+    translation: "Welcome to the restaurant! How can I help you?",
+  },
+  supermarket: {
+    text: "Bem-vindo ao supermercado! O que você procura?",
+    translation: "Welcome to the supermarket! What are you looking for?",
+  },
+  train: {
+    text: "Bem-vindo à estação! Como posso ajudar?",
+    translation: "Welcome to the station! How can I help you?",
+  },
+  conversation: {
+    text: "Olá! Sobre o que você quer conversar?",
+    translation: "Hi! What would you like to talk about?",
+  },
+};
 
 // Utility function to clean text from emojis and special symbols
 const cleanText = (input: string) => {
@@ -135,7 +134,7 @@ export const useChatMessages = ({ scenario }: UseChatMessagesProps) => {
 
   const addErrorMessage = () => {
     const errorText =
-      "Entschuldigung, es gab einen Fehler. Bitte versuchen Sie es erneut.";
+      "Desculpe, ocorreu um erro. Por favor, tente novamente."; // Changed from German to Portuguese
     const errorTranslation = "Sorry, there was an error. Please try again.";
     setMessages((prev) => [
       ...prev,
