@@ -43,18 +43,15 @@ export class ConversationService {
         this.translationService.translateToEnglish(lastMessageContent)
       ]);
 
-      const audioPromise = this.audioService.generateAudio(aiResponse);
-
       const response = {
         text: aiResponse,
-        translation,
-        audioBuffer: await audioPromise
+        translation
       };
 
       this.cacheResponse(cacheKey, response);
       return response;
     } catch (error) {
-      console.error('Conversation error:', error);
+      console.error('Error in conversation:', error);
       throw error;
     }
   }

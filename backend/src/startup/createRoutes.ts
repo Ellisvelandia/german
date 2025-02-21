@@ -6,7 +6,6 @@ import { Clients } from "../types";
 
 // Define interfaces for request and response types
 interface ConversationResponse {
-  audio: string;
   text: string;
   translation: string;
   success: boolean;
@@ -42,22 +41,8 @@ const createErrorResponse = (
 const createSuccessResponse = (data: {
   text: string;
   translation: string;
-  audio?: string;
-  audioBuffer?: Buffer | null;  // Update type to allow null
 }): ConversationResponse => {
-  let audioData: Buffer;
-  
-  if (data.audioBuffer && Buffer.isBuffer(data.audioBuffer)) {
-    audioData = data.audioBuffer;
-  } else if (data.audio) {
-    audioData = Buffer.from(data.audio, 'base64');
-  } else {
-    // Minimal valid audio file as fallback
-    audioData = Buffer.from('SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAADzABtbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1t//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAA8w2tt+t', 'base64');
-  }
-
   return {
-    audio: audioData.toString('base64'),
     text: data.text,
     translation: data.translation,
     success: true,

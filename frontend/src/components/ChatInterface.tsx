@@ -5,6 +5,7 @@ import { Mic, Send, MicOff, ArrowLeft, Info } from 'lucide-react';
 import { useChatMessages } from '../hooks/useChatMessages';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useAudioManager } from '../hooks/useAudioManager';
+import { speakText } from '../services/speechService';
 
 interface ChatInterfaceProps {
   scenario: string;
@@ -24,21 +25,45 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
     handleAudioResponse,
   } = useChatMessages({ scenario });
 
+  const handleSendMessage = async () => {
+    if (!inputText.trim()) return;
+    try {
+      stopAudio();
+      const response = await sendMessage(inputText);
+      setInputText('');
+      // Speak the AI's response
+      if (response?.text) {
+        await speakText(response.text);
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('timed out')) {
+        alert('A resposta está demorando mais que o esperado. Tente novamente.');
+      }
+    }
+  };
+
+  const handleAudioResponseWithSpeech = async (audioBlob: Blob, text: string) => {
+    if (text.trim()) {
+      setIsProcessing(true);
+      try {
+        const response = await handleAudioResponse(audioBlob, text);
+        // Speak the AI's response
+        if (response?.text) {
+          await speakText(response.text);
+        }
+      } finally {
+        setIsProcessing(false);
+        setTranscription('');
+      }
+    }
+  };
+
   const {
     isRecording,
     toggleRecording,
-    // Remove the unused 'error' destructuring
   } = useSpeechRecognition({
     onRecordingComplete: async (audioBlob) => {
-      if (transcription.trim()) {
-        setIsProcessing(true);
-        try {
-          await handleAudioResponse(audioBlob, transcription);
-        } finally {
-          setIsProcessing(false);
-          setTranscription('');
-        }
-      }
+      await handleAudioResponseWithSpeech(audioBlob, transcription);
     },
     onTranscriptionChange: (text) => setTranscription(text),
     onError: (error) => {
@@ -49,19 +74,6 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
 
   const navigate = useNavigate();
   const { stopAudio } = useAudioManager();
-
-  const handleSendMessage = async () => {
-    if (!inputText.trim()) return;
-    try {
-      stopAudio();
-      await sendMessage(inputText);
-      setInputText('');
-    } catch (error) {
-      if (error instanceof Error && error.message.includes('timed out')) {
-        alert('A resposta está demorando mais que o esperado. Tente novamente.');
-      }
-    }
-  };
 
   useEffect(() => {
     if (isRecording) {

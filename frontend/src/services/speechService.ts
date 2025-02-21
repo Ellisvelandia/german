@@ -108,3 +108,25 @@ export const startConversationWithText = async (scenarioName: string, text: stri
     throw error;
   }
 };
+
+export const speakText = (text: string, lang = 'pt-BR') => {
+  return new Promise((resolve, reject) => {
+    if (!('speechSynthesis' in window)) {
+      reject(new Error('Speech synthesis not supported'));
+      return;
+    }
+
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang;
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+
+    utterance.onend = () => resolve(true);
+    utterance.onerror = (error) => reject(error);
+
+    window.speechSynthesis.speak(utterance);
+  });
+};
