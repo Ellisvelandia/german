@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import ChatMessage from './ChatMessage';
-import { Mic, Send, MicOff } from 'lucide-react';
+import { Mic, Send, MicOff, ArrowLeft } from 'lucide-react'; // Add ArrowLeft icon
 import { useChatMessages } from '../hooks/useChatMessages';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 
@@ -16,21 +17,23 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
     isLoading,
     messagesEndRef,
     handleSendMessage: sendMessage,
-    handleAudioResponse
+    handleAudioResponse,
   } = useChatMessages({ scenario });
 
   const {
     isRecording,
     startRecording,
-    stopRecording
+    stopRecording,
   } = useAudioRecorder({
     onRecordingComplete: handleAudioResponse,
     onTranscriptionChange: (text) => setTranscription(text),
     onError: (error) => {
       console.error('Error recording audio:', error);
       alert('Could not access microphone. Please ensure microphone permissions are granted.');
-    }
+    },
   });
+
+  const navigate = useNavigate(); // Initialize useNavigate hook
 
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
@@ -42,6 +45,11 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
         alert('The response is taking longer than expected. Please try again.');
       }
     }
+  };
+
+  // Handle back navigation
+  const handleBack = () => {
+    navigate(-1); // Go back to the previous page
   };
 
   const renderMessageList = () => (
@@ -58,11 +66,7 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
       ))}
       {isRecording && transcription && (
         <div className="transition-all duration-300 ease-in-out transform hover:scale-[1.01]">
-          <ChatMessage
-            text={transcription}
-            translation="Live transcription"
-            isUser={true}
-          />
+          <ChatMessage text={transcription} translation="Live transcription" isUser={true} />
         </div>
       )}
       {isLoading && (
@@ -124,6 +128,17 @@ const ChatInterface = ({ scenario }: ChatInterfaceProps) => {
 
   return (
     <div className="h-full flex flex-col p-2 sm:p-4 max-w-4xl mx-auto w-full bg-gray-50">
+      {/* Back Button */}
+      <div className="mb-4">
+        <button
+          onClick={handleBack}
+          className="flex items-center gap-2.5 px-4 py-2.5 bg-white hover:bg-gray-50 text-gray-700 rounded-lg transition-all duration-200 shadow-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          aria-label="Go back to previous page"
+        >
+          <ArrowLeft className="w-5 h-5 text-gray-600" />
+          <span className="font-medium">Back</span>
+        </button>
+      </div>
       {renderMessageList()}
       {renderInputArea()}
     </div>
