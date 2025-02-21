@@ -1,8 +1,5 @@
-import dotenv from 'dotenv'
-import OpenAI from "openai"
+import { OpenAI } from 'openai'
 import { ChatCompletion, ChatCompletionMessageParam } from 'openai/resources'
-
-dotenv.config()
 
 export class DeepseekClient {
 	private client: OpenAI
@@ -10,22 +7,33 @@ export class DeepseekClient {
 	constructor() {
 		this.client = new OpenAI({
 			baseURL: 'https://openrouter.ai/api/v1',
-			apiKey: process.env.DEEPSEEK_KEY
+			apiKey: process.env.DEEPSEEK_KEY,
+			timeout: 10000
 		})
 	}
 
-	public async completion(messages: ChatCompletionMessageParam[]): Promise<ChatCompletion & { _request_id?: string | null | undefined } | undefined> {
+	public async completion(messages: ChatCompletionMessageParam[]): Promise<ChatCompletion> {
 		try {
 			const response = await this.client.chat.completions.create({
 				messages,
 				model: "deepseek/deepseek-chat",
-				temperature: 0.7,
-				max_tokens: 100
+				temperature: 0.5,
+				max_tokens: 50,
+				presence_penalty: -0.5,
+				frequency_penalty: 0.3
 			})
-			console.log('Connected to deepseek!')
+
+			if (!response || !response.choices[0]?.message?.content) {
+				throw new Error('Invalid response from AI service')
+			}
+
+			// Ensure the response has the required content
+			response.choices[0].message.content = response.choices[0].message.content || ''
+
 			return response
 		} catch (error) {
 			console.error('Error connecting to deepseek:', error)
+			throw new Error('Failed to get response from AI service')
 		}
 	}
 }

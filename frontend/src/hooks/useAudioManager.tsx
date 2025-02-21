@@ -17,27 +17,26 @@ export const useAudioManager = () => {
           cleanupRef();
         }
 
+        // Convert base64 to blob if needed
+        let audioUrl = audioSrc;
+        if (audioSrc.startsWith('data:audio')) {
+          const base64Data = audioSrc.split(',')[1];
+          const audioBlob = await fetch(`data:audio/mpeg;base64,${base64Data}`).then(r => r.blob());
+          audioUrl = URL.createObjectURL(audioBlob);
+        }
+
         // Set the source
-        audioRef.current.src = audioSrc;
+        audioRef.current.src = audioUrl;
 
         // Find or create source element
-        const sourceElement = audioRef.current.querySelector('source') || 
-                            document.createElement('source');
-        sourceElement.src = audioSrc;
-        
-        // Set appropriate MIME type
-        if (audioSrc.startsWith('data:audio/mp3')) {
-          sourceElement.type = 'audio/mp3';
-        } else if (audioSrc.startsWith('data:audio/mpeg')) {
-          sourceElement.type = 'audio/mpeg';
-        } else {
-          sourceElement.type = 'audio/mpeg'; // default type
-        }
-
-        // Ensure source element is in the audio element
-        if (!audioRef.current.contains(sourceElement)) {
+        let sourceElement = audioRef.current.querySelector('source');
+        if (!sourceElement) {
+          sourceElement = document.createElement('source');
           audioRef.current.appendChild(sourceElement);
         }
+        
+        sourceElement.src = audioUrl;
+        sourceElement.type = 'audio/mpeg';
 
         // Wait for the audio to be loaded
         await new Promise((resolve, reject) => {
@@ -48,10 +47,10 @@ export const useAudioManager = () => {
             resolve(true);
           };
           
-          const handleError = () => {
+          const handleError = (e: Event) => {
             audioRef.current?.removeEventListener('error', handleError);
-            console.error('Audio loading error:', audioRef.current?.error);
-            reject(new Error(`Failed to load audio: ${audioRef.current?.error?.message}`));
+            const mediaError = (e.target as HTMLAudioElement).error;
+            reject(new Error(`Failed to load audio: ${mediaError?.message}`));
           };
           
           audioRef.current.addEventListener('loadeddata', handleLoad);
@@ -60,11 +59,12 @@ export const useAudioManager = () => {
 
         await play();
         
-        cleanupRef = () => {
-          if (audioSrc.startsWith('blob:')) {
-            URL.revokeObjectURL(audioSrc);
-          }
-        };
+        // Cleanup blob URL if created
+        if (audioUrl.startsWith('blob:')) {
+          cleanupRef = () => {
+            URL.revokeObjectURL(audioUrl);
+          };
+        }
       }
     } catch (err) {
       console.error('Error playing audio:', err);
@@ -78,15 +78,19 @@ export const useAudioManager = () => {
 
   const stopAudio = useCallback(() => {
     stop();
+    if (cleanupRef) {
+      cleanupRef();
+      cleanupRef = undefined;
+    }
   }, [stop]);
 
   return {
     audioRef,
     isPlaying,
-    error,
     playAudio,
     pauseAudio,
-    stopAudio
+    stopAudio,
+    error
   };
 };
 

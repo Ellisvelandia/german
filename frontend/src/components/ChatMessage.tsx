@@ -33,8 +33,7 @@ const ChatMessage = ({
       }
     } catch (error) {
       console.error("Error playing/pausing audio:", error);
-      // More specific error message
-      alert("Não foi possível reproduzir o áudio. Por favor, tente novamente mais tarde.");
+      alert("Não foi possível reproduzir o áudio. Por favor, tente novamente.");
     }
   };
 

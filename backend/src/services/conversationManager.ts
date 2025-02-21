@@ -12,8 +12,8 @@ interface ConversationContext {
 
 export class ConversationManager {
   private conversations: Map<string, ConversationContext>;
-  private readonly maxHistoryLength: number = 5; // Reduced from 10 to improve response speed
-  private readonly contextTimeout: number = 15 * 60 * 1000; // Reduced to 15 minutes to free up memory faster
+  private readonly maxHistoryLength: number = 2; // Reduced from 5
+  private readonly contextTimeout: number = 5 * 60 * 1000; // Reduced to 5 minutes
 
   constructor(private deepseekClient: DeepseekClient) {
     this.conversations = new Map();
@@ -53,30 +53,26 @@ export class ConversationManager {
       this.conversations.set(sessionId, context);
     }
 
-    // Update context with only essential history
-    if (context.history.length >= this.maxHistoryLength) {
-      context.history = context.history.slice(-2); // Keep only the last interaction
-    }
+    // Keep only the last message for context
+    context.history = context.history.slice(-1);
     context.history.push({ role: 'user', content: text });
     context.lastInteraction = new Date();
 
     // Prepare messages for AI with minimal context
     const messages = [
       { role: 'system', content: this.getScenarioContext(scenario) },
-      context.history[context.history.length - 1] // Only use the latest message
+      { role: 'user', content: text }
     ];
 
     // Get AI response
-const response = await this.deepseekClient.completion(messages as ChatCompletionMessageParam[]);
+    const response = await this.deepseekClient.completion(messages as ChatCompletionMessageParam[]);
     const aiResponse = response?.choices[0]?.message?.content || '';
 
-    // Update history with AI response
-    context.history.push({ role: 'assistant', content: aiResponse });
-
-    // Trim history if too long
-    if (context.history.length > this.maxHistoryLength) {
-      context.history = context.history.slice(-this.maxHistoryLength);
-    }
+    // Only store the latest interaction
+    context.history = [
+      { role: 'user', content: text },
+      { role: 'assistant', content: aiResponse }
+    ];
 
     return aiResponse;
   }
