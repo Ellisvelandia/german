@@ -32,43 +32,54 @@ export class ApiService {
   }
 
   async sendMessage(scenario: string, message: string): Promise<ConversationResponse> {
-    const response = await this.fetchWithTimeout(`${this.baseUrl}/api/conversation`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        scenario,
-        message,
-      }),
-    });
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/conversation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          scenario,
+          message,
+        }),
+      });
 
-    if (!response.ok) {
-      throw new Error(`Failed to send message: ${response.statusText}`);
-    }
+      if (!response.ok) {
+        // Get detailed error message from server if available
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          `Failed to send message: ${errorData.message || response.statusText}`
+        );
+      }
 
-    const data = await response.json();
-    
-    // Map backend response fields to frontend expected fields
-    const mappedData = {
-      text: data.germanText || data.text || '',
-      translation: data.englishText || data.translation || '',
-      audio: data.audio || ''
-    };
-    
-    // Validate response data
-    if (!mappedData.text || typeof mappedData.text !== 'string') {
-      throw new Error('Invalid response: missing or invalid text');
-    }
-    if (!mappedData.translation || typeof mappedData.translation !== 'string') {
-      throw new Error('Invalid response: missing or invalid translation');
-    }
-    // Allow empty audio string as it will be handled by the audio player component
-    if (typeof mappedData.audio !== 'string') {
-      throw new Error('Invalid response: audio must be a string');
-    }
+      const data = await response.json();
+      
+      // Map backend response fields to frontend expected fields
+      const mappedData = {
+        text: data.text || data.germanText || '',
+        translation: data.translation || data.englishText || '',
+        audio: data.audio || ''
+      };
+      
+      // Add more detailed validation
+      if (!mappedData.text || typeof mappedData.text !== 'string') {
+        console.error('Invalid response data:', data);
+        throw new Error('Server response missing required text field');
+      }
+      if (!mappedData.translation || typeof mappedData.translation !== 'string') {
+        console.error('Invalid response data:', data);
+        throw new Error('Server response missing required translation field');
+      }
+      if (typeof mappedData.audio !== 'string') {
+        console.error('Invalid response data:', data);
+        throw new Error('Server response has invalid audio format');
+      }
 
-    return mappedData;
+      return mappedData;
+    } catch (error) {
+      console.error('API Error Details:', error);
+      throw error;
+    }
   }
 
   async sendAudio(scenario: string, audioBlob: Blob): Promise<ConversationResponse> {

@@ -43,7 +43,7 @@ const createSuccessResponse = (data: {
   text: string;
   translation: string;
   audio?: string;
-  audioBuffer?: Buffer;
+  audioBuffer?: Buffer | null;  // Update type to allow null
 }): ConversationResponse => {
   let audioData: Buffer;
   
@@ -132,7 +132,13 @@ export const createRoutes = (clients: Clients) => {
           [{ role: "user", content: req.body.text || "olá" }]
         );
 
-        res.json(createSuccessResponse(response));
+        // Convert null audioBuffer to undefined before passing to createSuccessResponse
+        const successResponse = createSuccessResponse({
+          ...response,
+          audioBuffer: response.audioBuffer || undefined
+        });
+
+        res.json(successResponse);
       } catch (error) {
         console.error("Error in /converse/text:", error);
         const statusCode =
@@ -153,29 +159,64 @@ export const createRoutes = (clients: Clients) => {
     "/api/conversation",
     async (req: Request, res: Response): Promise<void> => {
       try {
-        if (!req.body.scenario) {
-          res
-            .status(400)
-            .json(createErrorResponse("Scenario is required", 400));
+        // Validate request body
+        if (!req.body) {
+          res.status(400).json({
+            error: "Missing request body",
+            message: "Request body is required"
+          });
           return;
         }
 
-        const response = await conversationService.converse(req.body.scenario, [
-          { role: "user", content: req.body.message || "olá" }
-        ]);
+        if (!req.body.scenario) {
+          res.status(400).json({
+            error: "Missing scenario",
+            message: "Scenario field is required"
+          });
+          return;
+        }
 
-        res.json(createSuccessResponse(response));
+        if (!req.body.message) {
+          res.status(400).json({
+            error: "Missing message",
+            message: "Message field is required"
+          });
+          return;
+        }
+
+        const response = await conversationService.converse(
+          req.body.scenario,
+          [{ role: "user", content: req.body.message }]
+        );
+
+        // Validate response before sending
+        if (!response || !response.text) {
+          throw new Error("Invalid response from conversation service");
+        }
+
+        res.json({
+          text: response.text,
+          translation: response.translation,
+          audio: response.audioBuffer ? response.audioBuffer.toString('base64') : ''
+        });
       } catch (error) {
         console.error("Error in /api/conversation:", error);
-        const statusCode =
-          error instanceof Error && error.message.includes("required")
-            ? 400
-            : 500;
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to generate response";
-        res
-          .status(statusCode)
-          .json(createErrorResponse(errorMessage, statusCode));
+        
+        // Determine if error is from OpenAI/DeepSeek
+        const isAIError = error instanceof Error && 
+          (error.message.includes('deepseek') || 
+           error.message.includes('openai'));
+
+        const statusCode = isAIError ? 503 : 500;
+        const errorMessage = isAIError 
+          ? "AI service temporarily unavailable" 
+          : error instanceof Error ? error.message : "Internal server error";
+
+        res.status(statusCode).json({
+          error: "Conversation Error",
+          message: errorMessage,
+          details: process.env.NODE_ENV === 'development' ? error : undefined
+        });
       }
     }
   );

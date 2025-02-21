@@ -18,38 +18,54 @@ export class ConversationService {
 
   public async converse(scenarioName: string, userMessages: ChatCompletionMessageParam[]) {
     try {
-      const scenario = ScenarioFactory.createScenario(scenarioName)
-      const state = userMessages.length === 1 ? ScenarioStates.START : ScenarioStates.CONTINUE
+      // Validate inputs
+      if (!scenarioName) {
+        throw new Error('Scenario name is required');
+      }
+      if (!Array.isArray(userMessages) || userMessages.length === 0) {
+        throw new Error('User messages are required');
+      }
+
+      const scenario = ScenarioFactory.createScenario(scenarioName);
+      const state = userMessages.length === 1 ? ScenarioStates.START : ScenarioStates.CONTINUE;
       
-      const systemPrompt = scenario.getSystemPrompt(state)
+      const systemPrompt = scenario.getSystemPrompt(state);
       
       const messages: ChatCompletionMessageParam[] = [
         { role: 'system', content: systemPrompt },
         ...userMessages
-      ]
+      ];
 
-      const response = await this.clients.deepseek.completion(messages)
+      const response = await this.clients.deepseek.completion(messages);
       
-      // Extract and validate AI response
-      const aiMessage = response.choices[0]?.message
-      if (!aiMessage?.content) {
-        throw new Error('Failed to get valid response from AI')
+      if (!response?.choices?.[0]?.message?.content) {
+        throw new Error('Invalid or empty response from AI service');
       }
 
-      const aiResponse = aiMessage.content
+      const aiResponse = response.choices[0].message.content;
 
-      // Now aiResponse is definitely a string
-      const translation = await this.translationService.translateToEnglish(aiResponse)
-      const audioBuffer = await this.audioService.generateAudio(aiResponse)
+      // Add timeout handling for translation and audio generation
+      const [translation, audioBuffer] = await Promise.all([
+        this.translationService.translateToEnglish(aiResponse)
+          .catch(error => {
+            console.error('Translation error:', error);
+            return 'Translation unavailable';
+          }),
+        this.audioService.generateAudio(aiResponse)
+          .catch(error => {
+            console.error('Audio generation error:', error);
+            return null;
+          })
+      ]);
 
       return {
         text: aiResponse,
         translation,
         audioBuffer
-      }
+      };
     } catch (error) {
-      console.error('Error in conversation:', error)
-      throw error
+      console.error('Conversation service error:', error);
+      throw error;
     }
   }
 }
