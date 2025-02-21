@@ -69,9 +69,37 @@ export const useSpeechRecognition = (
           };
 
           recognition.onerror = (event: any) => {
-            const err = new Error(`Speech recognition error: ${event.error}`);
+            let errorMessage = 'Erro na gravação de áudio';
+            
+            switch (event.error) {
+              case 'network':
+                errorMessage = 'Erro de conexão. Verifique sua internet e tente novamente.';
+                break;
+              case 'not-allowed':
+                errorMessage = 'Acesso ao microfone negado. Verifique as permissões do navegador.';
+                break;
+              case 'aborted':
+                errorMessage = 'Gravação interrompida.';
+                break;
+              case 'no-speech':
+                errorMessage = 'Nenhuma fala detectada. Tente novamente.';
+                break;
+              default:
+                errorMessage = `Erro na gravação de áudio: ${event.error}`;
+            }
+
+            const err = new Error(errorMessage);
             setError(err);
             onError?.(err);
+            
+            // Automatically stop recording on error
+            if (mediaRecorderRef.current) {
+              mediaRecorderRef.current.stop();
+            }
+            if (streamRef.current) {
+              streamRef.current.getTracks().forEach((track) => track.stop());
+            }
+            setIsRecording(false);
           };
 
           recognition.start();

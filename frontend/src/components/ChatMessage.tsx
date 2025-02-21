@@ -32,98 +32,93 @@ const ChatMessage = ({
         await playAudio(audioUrl);
       }
     } catch (error) {
-      console.error("Error playing/pausing audio:", error);
+      console.error("Erro ao reproduzir áudio:", error);
       alert("Não foi possível reproduzir o áudio. Por favor, tente novamente.");
     }
-  };
-
-  const toggleTranslation = () => {
-    setShowTranslation((prev) => !prev);
   };
 
   return (
     <div
       className={`flex ${
         isUser ? "justify-end" : "justify-start"
-      } mb-4 px-2 sm:px-0 w-full`}
+      } mb-3 px-2 sm:px-0 w-full`}
     >
       {!isUser && (
-        <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-blue-100 flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
+        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-100 flex items-center justify-center mr-2 flex-shrink-0">
           <img
             src="/asianwoman.png"
-            alt="ai woman"
+            alt="Mulher asiática"
             className="w-full h-full rounded-full"
           />
         </div>
       )}
+      
       <div
-        className={`max-w-[85%] sm:max-w-[70%] rounded-lg p-3 sm:p-5 ${
-          isUser ? "bg-blue-500 text-white" : "bg-white shadow-lg"
+        className={`max-w-[85%] sm:max-w-[75%] rounded-lg p-3 ${
+          isUser 
+            ? "bg-blue-500 text-white ml-2" 
+            : "bg-white border border-gray-100 shadow-sm"
         } ${isTranscribing ? "animate-pulse" : ""}`}
       >
-        {isUser ? (
-          <div className="space-y-2">
-            <div className="flex items-start gap-2">
-              {isTranscribed && (
-                <Mic className="w-4 h-4 text-blue-200 flex-shrink-0 mt-1" />
-              )}
-              <p className="text-sm sm:text-base leading-relaxed break-words">
-                {text}
-              </p>
-            </div>
-            {isTranscribing && (
-              <p className="text-xs text-blue-200 italic">
-                Transcribing audio...
-              </p>
+        <div className={`space-y-2 ${isUser ? "text-white" : "text-gray-800"}`}>
+          <div className="flex items-start gap-2">
+            {isUser && isTranscribed && (
+              <Mic className="w-4 h-4 text-blue-200 flex-shrink-0 mt-1" />
+            )}
+            <p className="text-sm leading-relaxed break-words flex-grow">
+              {text}
+            </p>
+            {!isUser && audioUrl && (
+              <button
+                onClick={handlePlayAudio}
+                className="flex-shrink-0 p-1.5 rounded-full bg-blue-50 hover:bg-blue-100 transition-colors"
+                title="Ouvir pronúncia"
+              >
+                {isPlaying ? (
+                  <Pause className="h-4 w-4 text-blue-600" />
+                ) : (
+                  <Play className="h-4 w-4 text-blue-600" />
+                )}
+              </button>
             )}
           </div>
-        ) : (
-          <div className="space-y-2 sm:space-y-3">
-            <div className="flex items-start space-x-2">
-              <p className="text-base sm:text-xl font-medium text-gray-800 leading-relaxed break-words flex-grow">
-                {text}
-              </p>
-              {audioUrl && (
-                <button
-                  onClick={handlePlayAudio}
-                  className="flex-shrink-0 flex items-center justify-center p-1.5 sm:p-2 rounded-full bg-blue-100 hover:bg-blue-200 transition-colors ml-2"
-                  title="Play pronunciation"
-                >
-                  {isPlaying ? (
-                    <Pause className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-                  ) : (
-                    <Play className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-                  )}
-                </button>
-              )}
-            </div>
-            <div className="h-px bg-gray-200" />
-            <div className="text-sm sm:text-base text-gray-600 leading-relaxed italic break-words">
-              {showTranslation ? (
-                <>
-                  {translation}
+
+          {isTranscribing && (
+            <p className="text-xs text-blue-200 italic">
+              Transcrevendo áudio...
+            </p>
+          )}
+
+          {!isUser && translation && (
+            <div className="mt-2 pt-2 border-t border-gray-100">
+              <div className="text-sm text-gray-600">
+                {showTranslation ? (
+                  <>
+                    {translation}
+                    <button
+                      onClick={() => setShowTranslation(false)}
+                      className="text-blue-600 text-xs ml-2 hover:underline"
+                    >
+                      Ocultar tradução
+                    </button>
+                  </>
+                ) : (
                   <button
-                    onClick={toggleTranslation}
-                    className="text-blue-600 underline ml-2 text-sm sm:text-base hover:text-blue-700"
+                    onClick={() => setShowTranslation(true)}
+                    className="text-blue-600 text-xs hover:underline"
                   >
-                    Hide Translation
+                    Mostrar tradução
                   </button>
-                </>
-              ) : (
-                <button
-                  onClick={toggleTranslation}
-                  className="text-blue-600 underline text-sm sm:text-base hover:text-blue-700"
-                >
-                  Show Translation
-                </button>
-              )}
+                )}
+              </div>
             </div>
-            <audio ref={audioRef} className="hidden" preload="auto">
-              <source type="audio/mpeg" />
-            </audio>
-          </div>
-        )}
+          )}
+        </div>
       </div>
+      
+      <audio ref={audioRef} className="hidden">
+        <source type="audio/mpeg" />
+      </audio>
     </div>
   );
 };
